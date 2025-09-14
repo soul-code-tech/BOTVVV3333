@@ -1,7 +1,7 @@
 {
   "name": "bingx-trading-bot",
   "version": "1.0.0",
-  "description": "Умный торговый бот для BingX с веб-интерфейсом и техническим анализом",
+  "description": "Умный торговый бот для BingX Spot с техническим анализом и самодиагностикой",
   "type": "module",
   "main": "server.js",
   "scripts": {
@@ -18,15 +18,5 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
-  },
-  "keywords": [
-    "bingx",
-    "trading",
-    "bot",
-    "crypto",
-    "stochastic",
-    "api"
-  ],
-  "author": "soul-code-tech",
-  "license": "MIT"
+  }
 }
