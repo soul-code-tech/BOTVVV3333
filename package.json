@@ -1,7 +1,7 @@
 {
   "name": "cryptophilosopherbot",
-  "version": "6.1.0",
-  "description": "AI Trading Bot for BingX SPOT",
+  "version": "7.0.0",
+  "description": "AI Trading Bot for BingX SPOT — v7.0 with Fixed API Endpoints",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
