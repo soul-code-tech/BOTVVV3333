@@ -40,7 +40,7 @@ let globalState = {
   makerFee: 0.0002,
   maxRiskPerTrade: 0.01,
   maxLeverage: 3,
-  // 100+ ликвидных монет (SPOT), без повторов и удалённых
+  // 100+ ликвидных SPOT-монет (без дубликатов)
   watchlist: [
     { symbol: 'BTC-USDT', name: 'bitcoin' },
     { symbol: 'ETH-USDT', name: 'ethereum' },
@@ -170,79 +170,10 @@ let globalState = {
     { symbol: 'RENDER-USDT', name: 'render-token' },
     { symbol: 'IO-STK-USDT', name: 'io-staking' },
     { symbol: 'KAS-USDT', name: 'kaspa' },
-    { symbol: 'SOL-USDT', name: 'solana' },
     { symbol: 'AR-USDT', name: 'arweave' },
     { symbol: 'SAND-USDT', name: 'the-sandbox' },
     { symbol: 'MANA-USDT', name: 'decentraland' },
     { symbol: 'GALA-USDT', name: 'gala' },
-    { symbol: 'AXS-USDT', name: 'axie-infinity' },
-    { symbol: 'IMX-USDT', name: 'immutable-x' },
-    { symbol: 'ENJ-USDT', name: 'enjin-coin' },
-    { symbol: 'FLOW-USDT', name: 'flow' },
-    { symbol: 'CHZ-USDT', name: 'chiliz' },
-    { symbol: 'SUSHI-USDT', name: 'sushi' },
-    { symbol: 'AAVE-USDT', name: 'aave' },
-    { symbol: 'UNI-USDT', name: 'uniswap' },
-    { symbol: 'COMP-USDT', name: 'compound-governance-token' },
-    { symbol: 'MKR-USDT', name: 'maker' },
-    { symbol: 'SNX-USDT', name: 'synthetix-network-token' },
-    { symbol: 'CRV-USDT', name: 'curve-dao-token' },
-    { symbol: 'BAL-USDT', name: 'balancer' },
-    { symbol: 'GRT-USDT', name: 'the-graph' },
-    { symbol: 'REN-USDT', name: 'ren' },
-    { symbol: 'LTC-USDT', name: 'litecoin' },
-    { symbol: 'XEM-USDT', name: 'nem' },
-    { symbol: 'XMR-USDT', name: 'monero' },
-    { symbol: 'ZEC-USDT', name: 'zcash' },
-    { symbol: 'DASH-USDT', name: 'dash' },
-    { symbol: 'RVN-USDT', name: 'ravencoin' },
-    { symbol: 'XLM-USDT', name: 'stellar' },
-    { symbol: 'ADA-USDT', name: 'cardano' },
-    { symbol: 'DOT-USDT', name: 'polkadot' },
-    { symbol: 'AVAX-USDT', name: 'avalanche-2' },
-    { symbol: 'MATIC-USDT', name: 'polygon' },
-    { symbol: 'FTM-USDT', name: 'fantom' },
-    { symbol: 'CELO-USDT', name: 'celo' },
-    { symbol: 'ONE-USDT', name: 'harmony' },
-    { symbol: 'ALGO-USDT', name: 'algorand' },
-    { symbol: 'VET-USDT', name: 'vechain' },
-    { symbol: 'HBAR-USDT', name: 'hedera-hashgraph' },
-    { symbol: 'FIL-USDT', name: 'filecoin' },
-    { symbol: 'IOTA-USDT', name: 'iota' },
-    { symbol: 'AR-USDT', name: 'arweave' },
-    { symbol: 'NEAR-USDT', name: 'near' },
-    { symbol: 'KSM-USDT', name: 'kusama' },
-    { symbol: 'KSM-USDT', name: 'kusama' },
-    { symbol: 'ATOM-USDT', name: 'cosmos' },
-    { symbol: 'OSMO-USDT', name: 'osmosis' },
-    { symbol: 'TIA-USDT', name: 'celestia' },
-    { symbol: 'EGLD-USDT', name: 'multiversx' },
-    { symbol: 'MINA-USDT', name: 'mina-protocol' },
-    { symbol: 'STX-USDT', name: 'stacks' },
-    { symbol: 'SOL-USDT', name: 'solana' },
-    { symbol: 'RUNE-USDT', name: 'thorchain' },
-    { symbol: 'JUP-USDT', name: 'jupiter-exchange-solana' },
-    { symbol: 'WIF-USDT', name: 'dogwifhat' },
-    { symbol: 'PEPE-USDT', name: 'pepe' },
-    { symbol: 'BONK-USDT', name: 'bonk' },
-    { symbol: 'SHIB-USDT', name: 'shiba-inu' },
-    { symbol: 'DOGE-USDT', name: 'dogecoin' },
-    { symbol: 'LTC-USDT', name: 'litecoin' },
-    { symbol: 'XRP-USDT', name: 'ripple' },
-    { symbol: 'TRX-USDT', name: 'tron' },
-    { symbol: 'BCH-USDT', name: 'bitcoin-cash' },
-    { symbol: 'ETC-USDT', name: 'ethereum-classic' },
-    { symbol: 'FET-USDT', name: 'fetch-ai' },
-    { symbol: 'RNDR-USDT', name: 'render-token' },
-    { symbol: 'INJ-USDT', name: 'injective-protocol' },
-    { symbol: 'TNSR-USDT', name: 'tensor' },
-    { symbol: 'AGIX-USDT', name: 'singularitynet' },
-    { symbol: 'OCEAN-USDT', name: 'ocean-protocol' },
-    { symbol: 'NMR-USDT', name: 'numeraire' },
-    { symbol: 'AKT-USDT', name: 'akash-network' },
-    { symbol: 'GALA-USDT', name: 'gala' },
-    { symbol: 'SAND-USDT', name: 'the-sandbox' },
-    { symbol: 'MANA-USDT', name: 'decentraland' },
     { symbol: 'AXS-USDT', name: 'axie-infinity' },
     { symbol: 'ILV-USDT', name: 'illuvium' },
     { symbol: 'MAGIC-USDT', name: 'magic' },
@@ -299,7 +230,7 @@ let globalState = {
     { symbol: 'BAT-USDT', name: 'basic-attention-token' }
   ],
   isRealMode: true,
-  tradeMode: 'scalping', // scalping | adaptive
+  tradeMode: 'scalping',
   riskLevel: 'high',
   currentPrices: {},
   fearIndex: 50,
@@ -328,24 +259,15 @@ const BINGX_API_KEY = process.env.BINGX_API_KEY;
 const BINGX_SECRET_KEY = process.env.BINGX_SECRET_KEY;
 const APP_PASSWORD = process.env.APP_PASSWORD || 'admin123';
 
-// Список доменов API
-const BINGX_API_DOMAINS = [
-  process.env.BINGX_API_DOMAIN_1 || 'https://open-api.bingx.io',
-  process.env.BINGX_API_DOMAIN_2 || 'https://open-api.bingx.com'
-];
-
-let currentApiDomainIndex = 0;
-function getCurrentApiDomain() { return BINGX_API_DOMAINS[currentApiDomainIndex]; }
-function switchToNextApiDomain() {
-  currentApiDomainIndex = (currentApiDomainIndex + 1) % BINGX_API_DOMAINS.length;
-  console.log(`🔄 Переключение на домен API: ${getCurrentApiDomain()}`);
-}
+// Используем bingx.io как основной — он стабильнее
+const BINGX_API_BASE_URL = process.env.BINGX_API_DOMAIN || 'https://open-api.bingx.io';
 
 // ==========================
 // ПРОВЕРКА КРИТИЧЕСКИХ ПАРАМЕТРОВ
 // ==========================
 if (!BINGX_API_KEY || !BINGX_SECRET_KEY) {
   console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: API-ключи не заданы!');
+  console.error('Пожалуйста, установите переменные окружения BINGX_API_KEY и BINGX_SECRET_KEY');
   process.exit(1);
 }
 
@@ -385,13 +307,19 @@ async function getFearAndGreedIndex() {
 }
 
 // ==========================
-// ФУНКЦИЯ: Получение серверного времени BingX
+// ФУНКЦИЯ: Получение серверного времени BingX (СПОТ — КРИТИЧЕСКИ ИСПРАВЛЕНО!)
 // ==========================
 async function getBingXServerTime() {
   try {
-    const response = await axios.get(`${getCurrentApiDomain()}/openApi/spot/v2/server/time`, { timeout: 10000 });
-    if (response.data.code === 0 && response.data.data.serverTime) return response.data.data.serverTime;
-    else { console.error('❌ Ошибка получения серверного времени'); return Date.now(); }
+    const response = await axios.get(`${BINGX_API_BASE_URL}/openApi/spot/v2/server/time`, {
+      timeout: 10000
+    });
+    if (response.data.code === 0 && response.data.data && response.data.data.serverTime) {
+      return response.data.data.serverTime;
+    } else {
+      console.error('❌ Ошибка получения серверного времени:', response.data.msg || 'Нет данных');
+      return Date.now();
+    }
   } catch (error) {
     console.error('❌ Ошибка получения серверного времени:', error.message);
     return Date.now();
@@ -407,7 +335,7 @@ async function getBingXRealBalance() {
     const timestamp = Date.now();
     const params = { timestamp, recvWindow: 5000 };
     const signature = signBingXRequest(params);
-    const url = `${getCurrentApiDomain()}/openApi/spot/v2/account/balance?timestamp=${timestamp}&recvWindow=5000&signature=${signature}`;
+    const url = `${BINGX_API_BASE_URL}/openApi/spot/v2/account/balance?timestamp=${timestamp}&recvWindow=5000&signature=${signature}`;
     console.log('🌐 [БАЛАНС] Отправляю запрос:', url);
     const response = await axios.get(url, { headers: { 'X-BX-APIKEY': BINGX_API_KEY }, timeout: 10000 });
     if (response.data.code === 0 && Array.isArray(response.data.data.balances)) {
@@ -422,7 +350,6 @@ async function getBingXRealBalance() {
     return null;
   } catch (error) {
     console.error('❌ Ошибка получения баланса:', error.message);
-    if (error.response?.status === 403 || error.response?.status === 429) switchToNextApiDomain();
     return null;
   }
 }
@@ -436,7 +363,7 @@ async function getBingXSpotHistory(symbol, interval = '1h', limit = 100) {
     const timestamp = serverTime;
     const params = { symbol, interval, limit, timestamp, recvWindow: 5000 };
     const signature = signBingXRequest(params);
-    const url = `${getCurrentApiDomain()}/openApi/spot/v2/market/klines?symbol=${params.symbol}&interval=${params.interval}&limit=${params.limit}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
+    const url = `${BINGX_API_BASE_URL}/openApi/spot/v2/market/klines?symbol=${params.symbol}&interval=${params.interval}&limit=${params.limit}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
     const response = await axios.get(url, { headers: { 'X-BX-APIKEY': BINGX_API_KEY }, timeout: 10000 });
     if (response.data.code === 0 && Array.isArray(response.data.data)) {
       return response.data.data.map(candle => ({
@@ -452,7 +379,6 @@ async function getBingXSpotHistory(symbol, interval = '1h', limit = 100) {
     return [];
   } catch (error) {
     console.error(`❌ Ошибка получения истории для ${symbol}:`, error.message);
-    if (error.response?.status === 403 || error.response?.status === 429) switchToNextApiDomain();
     return [];
   }
 }
@@ -466,7 +392,7 @@ async function getCurrentPrices() {
   for (const coin of globalState.watchlist) {
     const params = { symbol: coin.symbol, timestamp: serverTime, recvWindow: 5000 };
     const signature = signBingXRequest(params);
-    const url = `${getCurrentApiDomain()}/openApi/spot/v2/market/ticker?symbol=${params.symbol}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
+    const url = `${BINGX_API_BASE_URL}/openApi/spot/v2/market/ticker?symbol=${params.symbol}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
     try {
       const response = await axios.get(url, { headers: { 'X-BX-APIKEY': BINGX_API_KEY }, timeout: 10000 });
       if (response.data.code === 0 && response.data.data && response.data.data.price) {
@@ -477,7 +403,6 @@ async function getCurrentPrices() {
       }
     } catch (error) {
       console.error(`❌ Не удалось получить цену для ${coin.symbol}:`, error.message);
-      if (error.response?.status === 403 || error.response?.status === 429) switchToNextApiDomain();
     }
     await new Promise(r => setTimeout(r, 500));
   }
@@ -502,7 +427,7 @@ async function placeBingXSpotOrder(symbol, side, type, quantity, price = null) {
     };
     if (price && type === 'LIMIT') params.price = price.toFixed(8);
     const signature = signBingXRequest(params);
-    let url = `${getCurrentApiDomain()}/openApi/spot/v2/trade/order?symbol=${params.symbol}&side=${params.side}&type=${params.type}&quantity=${params.quantity}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
+    let url = `${BINGX_API_BASE_URL}/openApi/spot/v2/trade/order?symbol=${params.symbol}&side=${params.side}&type=${params.type}&quantity=${params.quantity}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
     if (price && type === 'LIMIT') url += `&price=${price.toFixed(8)}`;
     const response = await axios.post(url, null, {
       headers: { 'X-BX-APIKEY': BINGX_API_KEY, 'Content-Type': 'application/json' },
@@ -517,7 +442,6 @@ async function placeBingXSpotOrder(symbol, side, type, quantity, price = null) {
     }
   } catch (error) {
     console.error(`💥 Ошибка при размещении ордера:`, error.message);
-    if (error.response?.status === 403 || error.response?.status === 429) switchToNextApiDomain();
     return null;
   }
 }
@@ -636,7 +560,7 @@ async function getFundamentalData(coin) {
       circulatingSupply: data.market_data?.circulating_supply || null
     };
     globalState.marketMemory.fundamentalData[coin.name] = fundamentalData;
-    globalState.fundamentalCache[cacheKey] = { data: fundamentalData, timestamp: now };
+    globalState.fundamentalCache[cacheKey] = { fundamentalData, timestamp: now };
     console.log(`✅ Фундаментальные данные для ${coin.name} обновлены`);
     await new Promise(r => setTimeout(r, 2000));
     return fundamentalData;
@@ -722,33 +646,26 @@ function analyzeMarketAdvanced(candles, coinName, fundamentalData) {
   let buySignals = 0, sellSignals = 0;
   const reasoning = [];
 
-  // SMA
   if (currentPrice > indicators.sma20) { buySignals++; reasoning.push("📈 Цена выше SMA20"); }
   else { sellSignals++; reasoning.push("📉 Цена ниже SMA20"); }
 
-  // MACD
   if (indicators.macd > indicators.signalLine) { buySignals++; reasoning.push("📊 MACD выше сигнальной линии"); }
   else { sellSignals++; reasoning.push("📊 MACD ниже сигнальной линии"); }
 
-  // RSI
   if (indicators.rsi14 < 30) { buySignals++; reasoning.push("🟢 RSI < 30 — перепроданность"); }
   else if (indicators.rsi14 > 70) { sellSignals++; reasoning.push("🔴 RSI > 70 — перекупленность"); }
 
-  // Bollinger Bands
   if (currentPrice < indicators.lowerBand) { buySignals++; reasoning.push("🎯 Цена ниже нижней полосы Боллинджера"); }
   else if (currentPrice > indicators.upperBand) { sellSignals++; reasoning.push("🎯 Цена выше верхней полосы Боллинджера"); }
 
-  // Stochastic
   if (indicators.stochastic < 20) { buySignals++; reasoning.push("🎲 Стохастик < 20"); }
   else if (indicators.stochastic > 80) { sellSignals++; reasoning.push("🎲 Стохастик > 80"); }
 
-  // Volume
   if (indicators.volumeRatio > 1.5) {
     if (currentPrice > candles[candles.length - 2].close) { buySignals++; reasoning.push("🔊 Высокий объем подтверждает восходящее движение"); }
     else { sellSignals++; reasoning.push("🔊 Высокий объем подтверждает нисходящее движение"); }
   }
 
-  // Фундаментальный анализ
   if (fundamentalData) {
     if (fundamentalData.marketCapRank <= 10) { buySignals += 0.5; reasoning.push("💎 Топ-10 по капитализации"); }
     if (fundamentalData.developerActivity > 70) { buySignals += 0.5; reasoning.push("👨‍💻 Активные разработчики"); }
@@ -756,7 +673,6 @@ function analyzeMarketAdvanced(candles, coinName, fundamentalData) {
     if (fundamentalData.communityGrowth > 0.1) { buySignals += 0.3; reasoning.push("👥 Рост сообщества"); }
   }
 
-  // Индекс страха
   if (globalState.fearIndex < 30) { buySignals += 0.5; reasoning.push("😌 Индекс страха низкий"); }
   else if (globalState.fearIndex > 70) { sellSignals += 0.5; reasoning.push("😱 Индекс страха высокий"); }
 
@@ -861,7 +777,7 @@ app.get('/login', (req, res) => {
     <html lang="ru">
     <head><meta charset="UTF-8"><title>Вход в систему</title>
     <style>body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.login-form{background:white;padding:40px;border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,0.1);text-align:center;width:100%;max-width:450px}input{width:100%;padding:15px;margin:15px 0;border:2px solid #e0e0e0;border-radius:8px;font-size:16px}button{width:100%;padding:15px;background:#3498db;color:white;border:none;border-radius:8px;cursor:pointer;font-size:18px;font-weight:bold}button:hover{background:#2980b9}h2{color:#2c3e50;margin-bottom:30px;font-size:28px}.logo{margin-bottom:30px;color:#3498db;font-size:36px;font-weight:bold}</style></head>
-    <body><div class="login-form"><div class="logo">Философ Рынка</div><h2>Торговый Бот v6.0</h2><form id="loginForm"><input type="password" name="password" placeholder="Введите пароль" required><button type="submit">Войти в систему</button></form></div>
+    <body><div class="login-form"><div class="logo">Философ Рынка</div><h2>Торговый Бот v6.1</h2><form id="loginForm"><input type="password" name="password" placeholder="Введите пароль" required><button type="submit">Войти в систему</button></form></div>
     <script>document.getElementById('loginForm').addEventListener('submit', async (e) => { e.preventDefault(); const password = document.querySelector('input[name="password"]').value; const res = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); const data = await res.json(); if (data.success) { document.cookie = "authToken=true; path=/; max-age=86400"; window.location.href = '/'; } else { alert('❌ Неверный пароль.'); document.querySelector('input[name="password"]').value = ''; } });</script></body></html>
   `);
 });
@@ -918,20 +834,23 @@ app.get('/api/status', (req, res) => {
 // ГЛАВНАЯ ФУНКЦИЯ — ЦИКЛ БОТА
 // ==========================
 (async () => {
-  console.log('🤖 ЗАПУСК ТОРГОВОГО БОТА v6.0 — ПОЛНОСТЬЮ ОПТИМИЗИРОВАННАЯ ВЕРСИЯ');
+  console.log('🤖 ЗАПУСК ТОРГОВОГО БОТА v6.1 — ИСПРАВЛЕНА ОШИБКА SERVER TIME');
   console.log('🔑 API-ключи: ЗАДАНЫ');
   console.log('🔐 Секретный ключ: ЗАДАН');
   console.log('✅ Проверка доступных монет на BingX...');
 
-  // Проверяем доступность монет
+  // Проверяем доступность монет через правильный эндпоинт SPOT
   for (const coin of [...globalState.watchlist]) {
+    console.log(`🔍 Проверка доступности ${coin.symbol}...`);
     try {
       const serverTime = await getBingXServerTime();
       const params = { symbol: coin.symbol, timestamp: serverTime, recvWindow: 5000 };
       const signature = signBingXRequest(params);
-      const url = `${getCurrentApiDomain()}/openApi/spot/v2/market/ticker?symbol=${params.symbol}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
+      const url = `${BINGX_API_BASE_URL}/openApi/spot/v2/market/ticker?symbol=${params.symbol}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
       const response = await axios.get(url, { headers: { 'X-BX-APIKEY': BINGX_API_KEY }, timeout: 10000 });
-      if (response.data.code !== 0 || !response.data.data?.price) {
+      if (response.data.code === 0 && response.data.data && response.data.data.price) {
+        console.log(`✅ Монета ${coin.symbol} доступна на BingX`);
+      } else {
         console.warn(`⚠️ Монета ${coin.symbol} НЕ доступна на BingX. Удалена.`);
         globalState.watchlist = globalState.watchlist.filter(c => c.symbol !== coin.symbol);
       }
@@ -999,9 +918,6 @@ app.get('/api/status', (req, res) => {
         const baseSize = (riskAmount * globalState.maxRiskPerTrade) / price;
         const finalSize = Math.max(0.001, baseSize);
 
-        const stopLoss = price * (1 - 0.01);
-        const takeProfit = price * (1 + 0.02);
-
         console.log(`
 🟢 ВХОД: ${bestOpportunity.signal.direction} ${finalSize.toFixed(6)} ${bestOpportunity.coin} (цена: $${price.toFixed(4)})`);
         
@@ -1025,14 +941,13 @@ app.get('/api/status', (req, res) => {
 💰 Баланс: $${(globalState.isRealMode ? globalState.realBalance : globalState.balance)?.toFixed(2) || '...'}`);
       }
 
-      // Увеличиваем частоту анализа при скальпинге
+      // Для скальпинга — частота анализа 10 секунд
       const delay = globalState.tradeMode === 'scalping' ? 10000 : 60000;
       console.log(`💤 Ждём ${delay / 1000} секунд...`);
       await new Promise(r => setTimeout(r, delay));
 
     } catch (error) {
       console.error('💥 КРИТИЧЕСКАЯ ОШИБКА В ЦИКЛЕ:', error.message);
-      if (error.response?.status === 403 || error.response?.status === 429) switchToNextApiDomain();
       await new Promise(r => setTimeout(r, 60000));
     }
   }
