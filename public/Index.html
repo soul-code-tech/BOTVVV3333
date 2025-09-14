@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Философ Рынка — Торговый Бот v6.0</title>
+    <title>Философ Рынка — Торговый Бот v6.1</title>
     <style>
         :root {
             --primary: #3498db;
@@ -335,7 +335,7 @@
     <button class="logout-btn" onclick="logout()">Выйти</button>
     <div class="container">
         <header>
-            <h1>Философ Рынка — Торговый Бот v6.0</h1>
+            <h1>Философ Рынка — Торговый Бот v6.1</h1>
             <p class="subtitle">Система принятия решений на основе фундаментального и технического анализа</p>
         </header>
         <div class="dashboard">
@@ -496,7 +496,6 @@
             fetch('/api/status')
                 .then(response => response.json())
                 .then(data => {
-                    // Баланс и режим
                     const displayBalance = data.isRealMode ? (data.realBalance || 0) : data.balance;
                     const balanceModeText = data.isRealMode ? 'Реальный баланс' : 'Демо-баланс';
                     const modeBadgeText = data.isRealMode ? 'РЕАЛ' : 'ДЕМО';
@@ -505,11 +504,9 @@
                     document.getElementById('modeBadge').textContent = modeBadgeText;
                     document.getElementById('modeBadge').className = 'status-badge ' + (data.isRealMode ? 'status-real' : 'status-demo');
 
-                    // Статистика
                     document.getElementById('tradeMode').textContent = data.tradeMode;
                     document.getElementById('riskLevel').textContent = data.riskLevel;
 
-                    // Уровень риска — подпись
                     let riskLabel = '';
                     if (data.riskLevel === 'recommended') riskLabel = 'Макс. риск: 1%';
                     else if (data.riskLevel === 'medium') riskLabel = 'Макс. риск: 2%';
@@ -523,7 +520,6 @@
                     document.getElementById('losingTrades').textContent = data.stats.losingTrades;
                     document.getElementById('winRate').textContent = data.stats.winRate.toFixed(1) + '%';
 
-                    // Открытые позиции
                     const positionsBody = document.getElementById('positionsBody');
                     if (data.openPositions && data.openPositions.length > 0) {
                         positionsBody.innerHTML = data.openPositions.map(pos => {
@@ -546,7 +542,6 @@
                         positionsBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #95a5a6;">Нет открытых позиций</td></tr>';
                     }
 
-                    // История сделок
                     const historyBody = document.getElementById('historyBody');
                     if (data.history && data.history.length > 0) {
                         historyBody.innerHTML = data.history.slice(-10).map(h => {
@@ -565,7 +560,6 @@
                         historyBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #95a5a6;">Нет истории сделок</td></tr>';
                     }
 
-                    // Лог анализа
                     const analysisLog = document.getElementById('analysisLog');
                     if (data.lastAnalysis && data.lastAnalysis.length > 0) {
                         analysisLog.innerHTML = '';
@@ -593,7 +587,6 @@
                         }
                     }
 
-                    // Добавляем уведомление о доступности цен
                     const pricesAvailable = data.currentPrices && Object.keys(data.currentPrices).length > 0;
                     if (!pricesAvailable && analysisLog.children.length === 0) {
                         const logEntry = document.createElement('div');
@@ -615,7 +608,7 @@
         }
 
         updateUI();
-        setInterval(updateUI, 10000); // Обновление каждые 10 секунд
+        setInterval(updateUI, 10000);
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 updateUI();
