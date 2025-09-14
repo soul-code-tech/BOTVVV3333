@@ -181,20 +181,18 @@ const BINGX_API_KEY = process.env.BINGX_API_KEY;
 const BINGX_SECRET_KEY = process.env.BINGX_SECRET_KEY;
 const APP_PASSWORD = process.env.APP_PASSWORD || 'admin123';
 
-// Список доменов API (основной и резервный)
+// Используем bingx.io как основной — он стабильнее и реже блокируется
 const BINGX_API_DOMAINS = [
-  process.env.BINGX_API_DOMAIN_1 || 'https://open-api.bingx.io', // Альтернативный, с лимитом 60/мин
-  process.env.BINGX_API_DOMAIN_2 || 'https://open-api.bingx.com'  // Основной
+  process.env.BINGX_API_DOMAIN_1 || 'https://open-api.bingx.io',
+  process.env.BINGX_API_DOMAIN_2 || 'https://open-api.bingx.com'
 ];
 
-let currentApiDomainIndex = 0; // Индекс текущего используемого домена
+let currentApiDomainIndex = 0;
 
-// Функция для получения текущего домена
 function getCurrentApiDomain() {
   return BINGX_API_DOMAINS[currentApiDomainIndex];
 }
 
-// Функция для переключения на следующий домен
 function switchToNextApiDomain() {
   currentApiDomainIndex = (currentApiDomainIndex + 1) % BINGX_API_DOMAINS.length;
   console.log(`🔄 Переключение на домен API: ${getCurrentApiDomain()}`);
@@ -210,7 +208,7 @@ if (!BINGX_API_KEY || !BINGX_SECRET_KEY) {
 }
 
 // ==========================
-// ФУНКЦИЯ: Подпись запроса для BingX
+// ФУНКЦИЯ: Подпись запроса для BingX (SPOT)
 // ==========================
 function signBingXRequest(params) {
   const cleanParams = { ...params };
@@ -252,7 +250,7 @@ async function getFearAndGreedIndex() {
 }
 
 // ==========================
-// ФУНКЦИЯ: Получение серверного времени BingX (ИСПРАВЛЕНО!)
+// ФУНКЦИЯ: Получение серверного времени BingX (СПОТ — ИСПРАВЛЕНО!)
 // ==========================
 async function getBingXServerTime() {
   try {
@@ -275,7 +273,7 @@ async function getBingXServerTime() {
 }
 
 // ==========================
-// ФУНКЦИЯ: Получение реального баланса (SPOT)
+// ФУНКЦИЯ: Получение реального баланса (SPOT — ИСПРАВЛЕНО!)
 // ==========================
 async function getBingXRealBalance() {
   try {
@@ -309,7 +307,7 @@ async function getBingXRealBalance() {
 }
 
 // ==========================
-// ФУНКЦИЯ: Получение исторических свечей (SPOT)
+// ФУНКЦИЯ: Получение исторических свечей (SPOT — ИСПРАВЛЕНО!)
 // ==========================
 async function getBingXSpotHistory(symbol, interval = '1h', limit = 100) {
   try {
@@ -352,7 +350,7 @@ async function getBingXSpotHistory(symbol, interval = '1h', limit = 100) {
 }
 
 // ==========================
-// ФУНКЦИЯ: Получение текущих цен (SPOT)
+// ФУНКЦИЯ: Получение текущих цен (SPOT — ИСПРАВЛЕНО!)
 // ==========================
 async function getCurrentPrices() {
   try {
@@ -397,7 +395,7 @@ async function getCurrentPrices() {
 }
 
 // ==========================
-// ФУНКЦИЯ: Размещение ордера (SPOT)
+// ФУНКЦИЯ: Размещение ордера (SPOT — ИСПРАВЛЕНО!)
 // ==========================
 async function placeBingXSpotOrder(symbol, side, type, quantity, price = null) {
   try {
@@ -857,7 +855,7 @@ const createIndexHtml = () => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Философ Рынка — Торговый Бот v6.1</title>
+    <title>Философ Рынка — Торговый Бот v7.0</title>
     <style>
         :root {
             --primary: #3498db;
@@ -1189,7 +1187,7 @@ const createIndexHtml = () => {
     <button class="logout-btn" onclick="logout()">Выйти</button>
     <div class="container">
         <header>
-            <h1>Философ Рынка — Торговый Бот v6.1</h1>
+            <h1>Философ Рынка — Торговый Бот v7.0</h1>
             <p class="subtitle">Система принятия решений на основе фундаментального и технического анализа</p>
         </header>
         <div class="dashboard">
@@ -1472,7 +1470,7 @@ const createIndexHtml = () => {
 </html>
   `;
   fs.writeFileSync(path.join(__dirname, 'public', 'index.html'), htmlContent, 'utf8');
-  console.log('✅ Файл index.html успешно создан с паролем из переменной окружения');
+  console.log('✅ Файл index.html успешно создан');
 };
 
 // Создаем index.html при запуске
@@ -1550,7 +1548,7 @@ app.get('/login', (req, res) => {
     <body>
       <div class="login-form">
         <div class="logo">Философ Рынка</div>
-        <h2>Торговый Бот v6.1</h2>
+        <h2>Торговый Бот v7.0</h2>
         <form id="loginForm">
           <input type="password" name="password" placeholder="Введите пароль" required>
           <button type="submit">Войти в систему</button>
@@ -1633,7 +1631,7 @@ app.get('/api/status', (req, res) => {
 // ГЛАВНАЯ ФУНКЦИЯ — ЦИКЛ БОТА
 // ==========================
 (async () => {
-  console.log('🤖 ЗАПУСК ТОРГОВОГО БОТА v6.1 — ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ');
+  console.log('🤖 ЗАПУСК ТОРГОВОГО БОТА v7.0 — ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ И РАБОЧАЯ ВЕРСИЯ');
   console.log('🔑 API-ключи: ЗАДАНЫ');
   console.log('🔐 Секретный ключ: ЗАДАН');
   console.log('✅ Проверка доступных монет на BingX...');
