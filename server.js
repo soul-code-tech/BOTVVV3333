@@ -8,7 +8,7 @@ import cors from 'cors';
 
 dotenv.config();
 
-import { getTickerPrice, getKlines, createOrder, getAccountInfo, getOpenOrders } from './bingxApi.js';
+import { getTickerPrice, getKlines, getAccountInfo } from './bingxApi.js';
 import { generateTradingSignal } from './technicalAnalysis.js';
 import { updateBotSettings, executeTradingLogic, getBotStatus, startMultiPairAnalysis } from './bot.js';
 
@@ -16,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 10000; // Render требует 10000 по умолчанию
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
@@ -43,11 +43,12 @@ app.get('/api/bot/status', async (req, res) => {
         status.currentPrice = ticker.price || "N/A";
         const account = await getAccountInfo();
         const quoteAsset = status.settings.tradingPair.split('-')[1];
-        status.availableBalance = account.balances?.find(b => b.asset === quoteAsset)?.free || "0";
-        const openOrders = await getOpenOrders(status.settings.tradingPair);
-        status.openOrdersCount = Array.isArray(openOrders) ? openOrders.length : 0;
+        const balance = account.balances?.find(b => b.asset === quoteAsset);
+        status.availableBalance = balance ? parseFloat(balance.free).toFixed(8) : "0";
+        status.lastUpdate = new Date().toISOString();
         res.json({ success: true,  status });
     } catch (error) {
+        console.error("Ошибка получения статуса:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -67,13 +68,13 @@ app.post('/api/bot/settings', (req, res) => {
 app.post('/api/bot/trade-now', async (req, res) => {
     try {
         await executeTradingLogic();
-        res.json({ success: true, message: "Анализ запущен" });
+        res.json({ success: true, message: "Анализ запущен", timestamp: new Date().toISOString() });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// 🚨 ВАЖНО: Перенаправляем корень на /dashboard
+// 🚨 ОБЯЗАТЕЛЬНО: Перенаправляем корень на /dashboard
 app.get('/', (req, res) => {
     res.redirect('/dashboard');
 });
@@ -83,9 +84,9 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// Health check
+// Health check для Render
 app.get('/health', (req, res) => {
-    res.json({ status: 'OK', time: new Date().toISOString() });
+    res.status(200).json({ status: 'OK', time: new Date().toISOString() });
 });
 
 // Обработка 404
