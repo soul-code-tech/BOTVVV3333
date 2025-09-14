@@ -4,8 +4,10 @@ const path = require('path');
 const axios = require('axios');
 const CryptoJS = require('crypto-js');
 const cookieParser = require('cookie-parser');
+const fs = require('fs');
 const dotenv = require('dotenv');
 
+// Загружаем переменные окружения
 dotenv.config();
 
 // ==========================
@@ -40,46 +42,39 @@ let globalState = {
   makerFee: 0.0002,
   maxRiskPerTrade: 0.01,
   maxLeverage: 3,
-  // 100+ ликвидных SPOT-монет (без дубликатов)
+  // 100+ ликвидных SPOT-монет
   watchlist: [
     { symbol: 'BTC-USDT', name: 'bitcoin' },
     { symbol: 'ETH-USDT', name: 'ethereum' },
     { symbol: 'BNB-USDT', name: 'binancecoin' },
     { symbol: 'SOL-USDT', name: 'solana' },
     { symbol: 'XRP-USDT', name: 'ripple' },
-    { symbol: 'USDC-USDT', name: 'usd-coin' },
     { symbol: 'ADA-USDT', name: 'cardano' },
-    { symbol: 'AVAX-USDT', name: 'avalanche-2' },
     { symbol: 'DOGE-USDT', name: 'dogecoin' },
-    { symbol: 'TRX-USDT', name: 'tron' },
-    { symbol: 'DOT-USDT', name: 'polkadot' },
-    { symbol: 'TON-USDT', name: 'the-open-network' },
     { symbol: 'LINK-USDT', name: 'chainlink' },
     { symbol: 'MATIC-USDT', name: 'polygon' },
-    { symbol: 'ICP-USDT', name: 'internet-computer' },
-    { symbol: 'SHIB-USDT', name: 'shiba-inu' },
-    { symbol: 'APT-USDT', name: 'aptos' },
-    { symbol: 'UNI-USDT', name: 'uniswap' },
     { symbol: 'LTC-USDT', name: 'litecoin' },
-    { symbol: 'DAI-USDT', name: 'dai' },
+    { symbol: 'UNI-USDT', name: 'uniswap' },
+    { symbol: 'AVAX-USDT', name: 'avalanche-2' },
+    { symbol: 'ATOM-USDT', name: 'cosmos' },
+    { symbol: 'APT-USDT', name: 'aptos' },
     { symbol: 'ARB-USDT', name: 'arbitrum' },
     { symbol: 'OP-USDT', name: 'optimism' },
-    { symbol: 'STRK-USDT', name: 'starknet' },
+    { symbol: 'TON-USDT', name: 'the-open-network' },
+    { symbol: 'SHIB-USDT', name: 'shiba-inu' },
+    { symbol: 'PEPE-USDT', name: 'pepe' },
     { symbol: 'INJ-USDT', name: 'injective-protocol' },
-    { symbol: 'TIA-USDT', name: 'celestia' },
+    { symbol: 'WLD-USDT', name: 'worldcoin' },
     { symbol: 'SEI-USDT', name: 'sei-network' },
-    { symbol: 'SUI-USDT', name: 'sui' },
-    { symbol: 'FET-USDT', name: 'fetch-ai' },
+    { symbol: 'TIA-USDT', name: 'celestia' },
+    { symbol: 'ONDO-USDT', name: 'ondo-finance' },
+    { symbol: 'JUP-USDT', name: 'jupiter-exchange-solana' },
+    { symbol: 'STRK-USDT', name: 'starknet' },
+    { symbol: 'ENA-USDT', name: 'ethena' },
     { symbol: 'RNDR-USDT', name: 'render-token' },
     { symbol: 'IMX-USDT', name: 'immutable-x' },
-    { symbol: 'ONDO-USDT', name: 'ondo-finance' },
-    { symbol: 'WLD-USDT', name: 'worldcoin' },
-    { symbol: 'JUP-USDT', name: 'jupiter-exchange-solana' },
-    { symbol: 'ENA-USDT', name: 'ethena' },
-    { symbol: 'TAO-USDT', name: 'bittensor' },
-    { symbol: 'BONK-USDT', name: 'bonk' },
-    { symbol: 'PEPE-USDT', name: 'pepe' },
-    { symbol: 'WIF-USDT', name: 'dogwifhat' },
+    { symbol: 'FET-USDT', name: 'fetch-ai' },
+    { symbol: 'SUI-USDT', name: 'sui' },
     { symbol: 'AAVE-USDT', name: 'aave' },
     { symbol: 'MKR-USDT', name: 'maker' },
     { symbol: 'COMP-USDT', name: 'compound-governance-token' },
@@ -150,79 +145,6 @@ let globalState = {
     { symbol: 'APE-USDT', name: 'apecoin' },
     { symbol: 'LUNC-USDT', name: 'terra-luna-2' },
     { symbol: 'RUNE-USDT', name: 'thorchain' },
-    { symbol: 'ATOM-USDT', name: 'cosmos' },
-    { symbol: 'XTZ-USDT', name: 'tezos' },
-    { symbol: 'BCH-USDT', name: 'bitcoin-cash' },
-    { symbol: 'ETC-USDT', name: 'ethereum-classic' },
-    { symbol: 'ZRX-USDT', name: '0x' },
-    { symbol: 'BAT-USDT', name: 'basic-attention-token' },
-    { symbol: 'FIL-USDT', name: 'filecoin' },
-    { symbol: 'NEAR-USDT', name: 'near' },
-    { symbol: 'POLYX-USDT', name: 'polygon' },
-    { symbol: 'CELR-USDT', name: 'celer-network' },
-    { symbol: 'STX-USDT', name: 'stacks' },
-    { symbol: 'QNT-USDT', name: 'quant' },
-    { symbol: 'HNT-USDT', name: 'helium' },
-    { symbol: 'LRC-USDT', name: 'loopring' },
-    { symbol: 'CVC-USDT', name: 'civic' },
-    { symbol: 'NKN-USDT', name: 'nkn' },
-    { symbol: 'ZKS-USDT', name: 'zk-sync' },
-    { symbol: 'RENDER-USDT', name: 'render-token' },
-    { symbol: 'IO-STK-USDT', name: 'io-staking' },
-    { symbol: 'KAS-USDT', name: 'kaspa' },
-    { symbol: 'AR-USDT', name: 'arweave' },
-    { symbol: 'SAND-USDT', name: 'the-sandbox' },
-    { symbol: 'MANA-USDT', name: 'decentraland' },
-    { symbol: 'GALA-USDT', name: 'gala' },
-    { symbol: 'AXS-USDT', name: 'axie-infinity' },
-    { symbol: 'ILV-USDT', name: 'illuvium' },
-    { symbol: 'MAGIC-USDT', name: 'magic' },
-    { symbol: 'FLOKI-USDT', name: 'floki' },
-    { symbol: 'BOME-USDT', name: 'book-of-meme' },
-    { symbol: 'MOG-USDT', name: 'mog-coin' },
-    { symbol: 'PYTH-USDT', name: 'pyth-network' },
-    { symbol: 'USDE-USDT', name: 'ethena-usde' },
-    { symbol: 'FDUSD-USDT', name: 'first-digital-usd' },
-    { symbol: 'TUSD-USDT', name: 'true-usd' },
-    { symbol: 'XLM-USDT', name: 'stellar' },
-    { symbol: 'ALGO-USDT', name: 'algorand' },
-    { symbol: 'VET-USDT', name: 'vechain' },
-    { symbol: 'FIL-USDT', name: 'filecoin' },
-    { symbol: 'HBAR-USDT', name: 'hedera-hashgraph' },
-    { symbol: 'FLOW-USDT', name: 'flow' },
-    { symbol: 'NEAR-USDT', name: 'near' },
-    { symbol: 'KAVA-USDT', name: 'kava' },
-    { symbol: 'CHZ-USDT', name: 'chiliz' },
-    { symbol: 'MINA-USDT', name: 'mina-protocol' },
-    { symbol: 'EGLD-USDT', name: 'multiversx' },
-    { symbol: 'THETA-USDT', name: 'theta-token' },
-    { symbol: 'ZIL-USDT', name: 'zilliqa' },
-    { symbol: 'QTUM-USDT', name: 'qtum' },
-    { symbol: 'RVN-USDT', name: 'ravencoin' },
-    { symbol: 'DGB-USDT', name: 'digibyte' },
-    { symbol: 'SC-USDT', name: 'siacoin' },
-    { symbol: 'ANKR-USDT', name: 'ankr' },
-    { symbol: 'BTT-USDT', name: 'bittorrent' },
-    { symbol: 'ROSE-USDT', name: 'oasis-network' },
-    { symbol: 'IOTA-USDT', name: 'iota' },
-    { symbol: 'XMR-USDT', name: 'monero' },
-    { symbol: 'ZEC-USDT', name: 'zcash' },
-    { symbol: 'DASH-USDT', name: 'dash' },
-    { symbol: 'KSM-USDT', name: 'kusama' },
-    { symbol: 'OSMO-USDT', name: 'osmosis' },
-    { symbol: 'DYDX-USDT', name: 'dydx' },
-    { symbol: 'BLUR-USDT', name: 'blur' },
-    { symbol: 'ORDI-USDT', name: 'ordi' },
-    { symbol: 'ARKM-USDT', name: 'arkham' },
-    { symbol: 'NOT-USDT', name: 'notcoin' },
-    { symbol: 'JASMY-USDT', name: 'jasmycoin' },
-    { symbol: '1INCH-USDT', name: '1inch' },
-    { symbol: 'MASK-USDT', name: 'mask-network' },
-    { symbol: 'ENS-USDT', name: 'ethereum-name-service' },
-    { symbol: 'APE-USDT', name: 'apecoin' },
-    { symbol: 'LUNC-USDT', name: 'terra-luna-2' },
-    { symbol: 'RUNE-USDT', name: 'thorchain' },
-    { symbol: 'ATOM-USDT', name: 'cosmos' },
     { symbol: 'XTZ-USDT', name: 'tezos' },
     { symbol: 'BCH-USDT', name: 'bitcoin-cash' },
     { symbol: 'ETC-USDT', name: 'ethereum-classic' },
@@ -259,8 +181,24 @@ const BINGX_API_KEY = process.env.BINGX_API_KEY;
 const BINGX_SECRET_KEY = process.env.BINGX_SECRET_KEY;
 const APP_PASSWORD = process.env.APP_PASSWORD || 'admin123';
 
-// Используем bingx.io как основной — он стабильнее
-const BINGX_API_BASE_URL = process.env.BINGX_API_DOMAIN || 'https://open-api.bingx.io';
+// Список доменов API (основной и резервный)
+const BINGX_API_DOMAINS = [
+  process.env.BINGX_API_DOMAIN_1 || 'https://open-api.bingx.io', // Альтернативный, с лимитом 60/мин
+  process.env.BINGX_API_DOMAIN_2 || 'https://open-api.bingx.com'  // Основной
+];
+
+let currentApiDomainIndex = 0; // Индекс текущего используемого домена
+
+// Функция для получения текущего домена
+function getCurrentApiDomain() {
+  return BINGX_API_DOMAINS[currentApiDomainIndex];
+}
+
+// Функция для переключения на следующий домен
+function switchToNextApiDomain() {
+  currentApiDomainIndex = (currentApiDomainIndex + 1) % BINGX_API_DOMAINS.length;
+  console.log(`🔄 Переключение на домен API: ${getCurrentApiDomain()}`);
+}
 
 // ==========================
 // ПРОВЕРКА КРИТИЧЕСКИХ ПАРАМЕТРОВ
@@ -272,16 +210,21 @@ if (!BINGX_API_KEY || !BINGX_SECRET_KEY) {
 }
 
 // ==========================
-// ФУНКЦИЯ: Подпись запроса для BingX (SPOT)
+// ФУНКЦИЯ: Подпись запроса для BingX
 // ==========================
 function signBingXRequest(params) {
   const cleanParams = { ...params };
   delete cleanParams.signature;
   let paramString = "";
   for (const key in cleanParams) {
-    if (paramString !== "") paramString += "&";
-    if (key === 'timestamp') paramString += `${key}=${cleanParams[key]}`;
-    else paramString += `${key}=${encodeURIComponent(cleanParams[key])}`;
+    if (paramString !== "") {
+      paramString += "&";
+    }
+    if (key === 'timestamp') {
+      paramString += `${key}=${cleanParams[key]}`;
+    } else {
+      paramString += `${key}=${encodeURIComponent(cleanParams[key])}`;
+    }
   }
   return CryptoJS.HmacSHA256(paramString, BINGX_SECRET_KEY).toString(CryptoJS.enc.Hex);
 }
@@ -294,7 +237,9 @@ async function getFearAndGreedIndex() {
     const response = await axios.get('https://api.alternative.me/fng/?limit=1', { timeout: 10000 });
     const value = parseInt(response.data.data[0].value);
     globalState.marketMemory.fearSentimentHistory.push({ value, timestamp: Date.now() });
-    if (globalState.marketMemory.fearSentimentHistory.length > 24) globalState.marketMemory.fearSentimentHistory.shift();
+    if (globalState.marketMemory.fearSentimentHistory.length > 24) {
+      globalState.marketMemory.fearSentimentHistory.shift();
+    }
     globalState.fearIndex = value;
     globalState.stats.marketSentiment = value;
     return value;
@@ -307,11 +252,11 @@ async function getFearAndGreedIndex() {
 }
 
 // ==========================
-// ФУНКЦИЯ: Получение серверного времени BingX (СПОТ — КРИТИЧЕСКИ ИСПРАВЛЕНО!)
+// ФУНКЦИЯ: Получение серверного времени BingX (ИСПРАВЛЕНО!)
 // ==========================
 async function getBingXServerTime() {
   try {
-    const response = await axios.get(`${BINGX_API_BASE_URL}/openApi/spot/v2/server/time`, {
+    const response = await axios.get(`${getCurrentApiDomain()}/openApi/spot/v2/server/time`, {
       timeout: 10000
     });
     if (response.data.code === 0 && response.data.data && response.data.data.serverTime) {
@@ -322,6 +267,9 @@ async function getBingXServerTime() {
     }
   } catch (error) {
     console.error('❌ Ошибка получения серверного времени:', error.message);
+    if (error.response?.status === 403 || error.response?.status === 429) {
+      switchToNextApiDomain();
+    }
     return Date.now();
   }
 }
@@ -335,9 +283,12 @@ async function getBingXRealBalance() {
     const timestamp = Date.now();
     const params = { timestamp, recvWindow: 5000 };
     const signature = signBingXRequest(params);
-    const url = `${BINGX_API_BASE_URL}/openApi/spot/v2/account/balance?timestamp=${timestamp}&recvWindow=5000&signature=${signature}`;
+    const url = `${getCurrentApiDomain()}/openApi/spot/v2/account/balance?timestamp=${timestamp}&recvWindow=5000&signature=${signature}`;
     console.log('🌐 [БАЛАНС] Отправляю запрос:', url);
-    const response = await axios.get(url, { headers: { 'X-BX-APIKEY': BINGX_API_KEY }, timeout: 10000 });
+    const response = await axios.get(url, {
+      headers: { 'X-BX-APIKEY': BINGX_API_KEY },
+      timeout: 10000
+    });
     if (response.data.code === 0 && Array.isArray(response.data.data.balances)) {
       const usdt = response.data.data.balances.find(b => b.asset === 'USDT');
       if (usdt) {
@@ -350,6 +301,9 @@ async function getBingXRealBalance() {
     return null;
   } catch (error) {
     console.error('❌ Ошибка получения баланса:', error.message);
+    if (error.response?.status === 403 || error.response?.status === 429) {
+      switchToNextApiDomain();
+    }
     return null;
   }
 }
@@ -361,10 +315,20 @@ async function getBingXSpotHistory(symbol, interval = '1h', limit = 100) {
   try {
     const serverTime = await getBingXServerTime();
     const timestamp = serverTime;
-    const params = { symbol, interval, limit, timestamp, recvWindow: 5000 };
+    const params = {
+      symbol,
+      interval,
+      limit,
+      timestamp,
+      recvWindow: 5000
+    };
     const signature = signBingXRequest(params);
-    const url = `${BINGX_API_BASE_URL}/openApi/spot/v2/market/klines?symbol=${params.symbol}&interval=${params.interval}&limit=${params.limit}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
-    const response = await axios.get(url, { headers: { 'X-BX-APIKEY': BINGX_API_KEY }, timeout: 10000 });
+    const url = `${getCurrentApiDomain()}/openApi/spot/v2/market/klines?symbol=${params.symbol}&interval=${params.interval}&limit=${params.limit}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
+    console.log(`🌐 Получение истории для ${symbol}: GET ${url}`);
+    const response = await axios.get(url, {
+      headers: { 'X-BX-APIKEY': BINGX_API_KEY },
+      timeout: 10000
+    });
     if (response.data.code === 0 && Array.isArray(response.data.data)) {
       return response.data.data.map(candle => ({
         time: candle[0],
@@ -374,11 +338,15 @@ async function getBingXSpotHistory(symbol, interval = '1h', limit = 100) {
         close: parseFloat(candle[4]),
         volume: parseFloat(candle[5])
       }));
+    } else {
+      console.error(`❌ Ошибка для ${symbol}:`, response.data.msg || 'Нет данных');
+      return [];
     }
-    console.error(`❌ Ошибка для ${symbol}:`, response.data.msg);
-    return [];
   } catch (error) {
     console.error(`❌ Ошибка получения истории для ${symbol}:`, error.message);
+    if (error.response?.status === 403 || error.response?.status === 429) {
+      switchToNextApiDomain();
+    }
     return [];
   }
 }
@@ -387,27 +355,45 @@ async function getBingXSpotHistory(symbol, interval = '1h', limit = 100) {
 // ФУНКЦИЯ: Получение текущих цен (SPOT)
 // ==========================
 async function getCurrentPrices() {
-  const prices = {};
-  const serverTime = await getBingXServerTime();
-  for (const coin of globalState.watchlist) {
-    const params = { symbol: coin.symbol, timestamp: serverTime, recvWindow: 5000 };
-    const signature = signBingXRequest(params);
-    const url = `${BINGX_API_BASE_URL}/openApi/spot/v2/market/ticker?symbol=${params.symbol}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
-    try {
-      const response = await axios.get(url, { headers: { 'X-BX-APIKEY': BINGX_API_KEY }, timeout: 10000 });
-      if (response.data.code === 0 && response.data.data && response.data.data.price) {
-        prices[coin.name] = parseFloat(response.data.data.price);
-        console.log(`✅ Цена для ${coin.symbol}: $${prices[coin.name]}`);
-      } else {
-        console.error(`❌ Ошибка для ${coin.symbol}:`, response.data.msg);
+  try {
+    const prices = {};
+    const serverTime = await getBingXServerTime();
+    for (const coin of globalState.watchlist) {
+      const params = {
+        symbol: coin.symbol,
+        timestamp: serverTime,
+        recvWindow: 5000
+      };
+      const signature = signBingXRequest(params);
+      const url = `${getCurrentApiDomain()}/openApi/spot/v2/market/ticker?symbol=${params.symbol}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
+      console.log(`🌐 Получение цены для ${coin.symbol}: GET ${url}`);
+      try {
+        const response = await axios.get(url, {
+          headers: { 'X-BX-APIKEY': BINGX_API_KEY },
+          timeout: 10000
+        });
+        if (response.data.code === 0 && response.data.data && response.data.data.price) {
+          const price = parseFloat(response.data.data.price);
+          const cleanSymbol = coin.name;
+          prices[cleanSymbol] = price;
+          console.log(`✅ Цена для ${coin.symbol}: $${price}`);
+        } else {
+          console.error(`❌ Ошибка для ${coin.symbol}:`, response.data.msg || 'Нет данных о цене');
+        }
+      } catch (error) {
+        console.error(`❌ Не удалось получить цену для ${coin.symbol}:`, error.message);
+        if (error.response?.status === 403 || error.response?.status === 429) {
+          switchToNextApiDomain();
+        }
       }
-    } catch (error) {
-      console.error(`❌ Не удалось получить цену для ${coin.symbol}:`, error.message);
+      await new Promise(r => setTimeout(r, 500)); // Задержка между запросами
     }
-    await new Promise(r => setTimeout(r, 500));
+    globalState.currentPrices = prices;
+    return prices;
+  } catch (error) {
+    console.error('❌ Глобальная ошибка получения текущих цен:', error.message);
+    return {};
   }
-  globalState.currentPrices = prices;
-  return prices;
 }
 
 // ==========================
@@ -425,10 +411,14 @@ async function placeBingXSpotOrder(symbol, side, type, quantity, price = null) {
       timestamp,
       recvWindow: 5000
     };
-    if (price && type === 'LIMIT') params.price = price.toFixed(8);
+    if (price && type === 'LIMIT') {
+      params.price = price.toFixed(8);
+    }
     const signature = signBingXRequest(params);
-    let url = `${BINGX_API_BASE_URL}/openApi/spot/v2/trade/order?symbol=${params.symbol}&side=${params.side}&type=${params.type}&quantity=${params.quantity}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
-    if (price && type === 'LIMIT') url += `&price=${price.toFixed(8)}`;
+    let url = `${getCurrentApiDomain()}/openApi/spot/v2/trade/order?symbol=${params.symbol}&side=${params.side}&type=${params.type}&quantity=${params.quantity}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
+    if (price && type === 'LIMIT') {
+      url += `&price=${price.toFixed(8)}`;
+    }
     const response = await axios.post(url, null, {
       headers: { 'X-BX-APIKEY': BINGX_API_KEY, 'Content-Type': 'application/json' },
       timeout: 10000
@@ -442,6 +432,9 @@ async function placeBingXSpotOrder(symbol, side, type, quantity, price = null) {
     }
   } catch (error) {
     console.error(`💥 Ошибка при размещении ордера:`, error.message);
+    if (error.response?.status === 403 || error.response?.status === 429) {
+      switchToNextApiDomain();
+    }
     return null;
   }
 }
@@ -560,13 +553,18 @@ async function getFundamentalData(coin) {
       circulatingSupply: data.market_data?.circulating_supply || null
     };
     globalState.marketMemory.fundamentalData[coin.name] = fundamentalData;
-    globalState.fundamentalCache[cacheKey] = { fundamentalData, timestamp: now };
+    globalState.fundamentalCache[cacheKey] = { 
+       fundamentalData, 
+      timestamp: now 
+    };
     console.log(`✅ Фундаментальные данные для ${coin.name} обновлены`);
     await new Promise(r => setTimeout(r, 2000));
     return fundamentalData;
   } catch (error) {
     console.error(`❌ Ошибка получения фундаментальных данных для ${coin.name}:`, error.message);
-    if (globalState.fundamentalCache[cacheKey]) return globalState.fundamentalCache[cacheKey].data;
+    if (globalState.fundamentalCache[cacheKey]) {
+      return globalState.fundamentalCache[cacheKey].data;
+    }
     return {
       developerActivity: 50,
       socialSentiment: 50,
@@ -585,30 +583,44 @@ function calculateTechnicalIndicators(candles) {
   const highs = candles.map(c => c.high);
   const lows = candles.map(c => c.low);
   const volumes = candles.map(c => c.volume);
-
-  const sma20 = closes.slice(-20).reduce((sum, p) => sum + p, 0) / 20;
+  // 1. SMA (Simple Moving Average) - 20 периодов
+  const sma20 = closes.slice(-20).reduce((sum, price) => sum + price, 0) / 20;
+  // 2. EMA (Exponential Moving Average) - 12 и 26 периодов
   const ema12 = calculateEMA(closes.slice(-12), 12);
   const ema26 = calculateEMA(closes.slice(-26), 26);
+  // 3. RSI (Relative Strength Index) - 14 периодов
   const rsi14 = calculateRSI(closes.slice(-15));
+  // 4. MACD (Moving Average Convergence Divergence)
   const macd = ema12 - ema26;
   const signalLine = calculateEMA([macd], 9);
-  const stdDev = Math.sqrt(closes.slice(-20).reduce((sum, p) => sum + Math.pow(p - sma20, 2), 0) / 20);
+  // 5. Bollinger Bands
+  const stdDev = Math.sqrt(closes.slice(-20).reduce((sum, price) => sum + Math.pow(price - sma20, 2), 0) / 20);
   const upperBand = sma20 + (2 * stdDev);
   const lowerBand = sma20 - (2 * stdDev);
+  // 6. Stochastic Oscillator
   const recentHigh = Math.max(...highs.slice(-14));
   const recentLow = Math.min(...lows.slice(-14));
   const currentClose = closes[closes.length - 1];
   const stochastic = ((currentClose - recentLow) / (recentHigh - recentLow)) * 100;
-  const avgVolume = volumes.slice(-20).reduce((sum, v) => sum + v, 0) / 20;
+  // 7. Volume Analysis
+  const avgVolume = volumes.slice(-20).reduce((sum, vol) => sum + vol, 0) / 20;
   const volumeRatio = volumes[volumes.length - 1] / avgVolume;
-
   return {
-    sma20, ema12, ema26, rsi14, macd, signalLine,
-    upperBand, lowerBand, stochastic, volumeRatio,
+    sma20,
+    ema12,
+    ema26,
+    rsi14,
+    macd,
+    signalLine,
+    upperBand,
+    lowerBand,
+    stochastic,
+    volumeRatio,
     currentPrice: currentClose
   };
 }
 
+// Вспомогательная функция для расчета EMA
 function calculateEMA(prices, period) {
   if (prices.length === 0) return 0;
   const multiplier = 2 / (period + 1);
@@ -619,20 +631,27 @@ function calculateEMA(prices, period) {
   return ema;
 }
 
+// Вспомогательная функция для расчета RSI
 function calculateRSI(prices) {
   if (prices.length < 2) return 50;
-  let gains = 0, losses = 0, count = 0;
+  let gains = 0;
+  let losses = 0;
+  let count = 0;
   for (let i = 1; i < prices.length; i++) {
-    const diff = prices[i] - prices[i-1];
-    if (diff > 0) gains += diff;
-    else losses += Math.abs(diff);
+    const difference = prices[i] - prices[i-1];
+    if (difference > 0) {
+      gains += difference;
+    } else {
+      losses += Math.abs(difference);
+    }
     count++;
   }
   const avgGain = gains / count;
   const avgLoss = losses / count;
   if (avgLoss === 0) return 100;
   const rs = avgGain / avgLoss;
-  return 100 - (100 / (1 + rs));
+  const rsi = 100 - (100 / (1 + rs));
+  return rsi;
 }
 
 // ==========================
@@ -643,46 +662,97 @@ function analyzeMarketAdvanced(candles, coinName, fundamentalData) {
   const indicators = calculateTechnicalIndicators(candles);
   if (!indicators) return null;
   const currentPrice = indicators.currentPrice;
-  let buySignals = 0, sellSignals = 0;
+  let buySignals = 0;
+  let sellSignals = 0;
   const reasoning = [];
-
-  if (currentPrice > indicators.sma20) { buySignals++; reasoning.push("📈 Цена выше SMA20"); }
-  else { sellSignals++; reasoning.push("📉 Цена ниже SMA20"); }
-
-  if (indicators.macd > indicators.signalLine) { buySignals++; reasoning.push("📊 MACD выше сигнальной линии"); }
-  else { sellSignals++; reasoning.push("📊 MACD ниже сигнальной линии"); }
-
-  if (indicators.rsi14 < 30) { buySignals++; reasoning.push("🟢 RSI < 30 — перепроданность"); }
-  else if (indicators.rsi14 > 70) { sellSignals++; reasoning.push("🔴 RSI > 70 — перекупленность"); }
-
-  if (currentPrice < indicators.lowerBand) { buySignals++; reasoning.push("🎯 Цена ниже нижней полосы Боллинджера"); }
-  else if (currentPrice > indicators.upperBand) { sellSignals++; reasoning.push("🎯 Цена выше верхней полосы Боллинджера"); }
-
-  if (indicators.stochastic < 20) { buySignals++; reasoning.push("🎲 Стохастик < 20"); }
-  else if (indicators.stochastic > 80) { sellSignals++; reasoning.push("🎲 Стохастик > 80"); }
-
+  // 1. Анализ тренда (SMA)
+  if (currentPrice > indicators.sma20) {
+    buySignals++;
+    reasoning.push("📈 Цена выше SMA20 - восходящий тренд");
+  } else {
+    sellSignals++;
+    reasoning.push("📉 Цена ниже SMA20 - нисходящий тренд");
+  }
+  // 2. Анализ MACD
+  if (indicators.macd > indicators.signalLine) {
+    buySignals++;
+    reasoning.push("📊 MACD выше сигнальной линии - бычий сигнал");
+  } else {
+    sellSignals++;
+    reasoning.push("📊 MACD ниже сигнальной линии - медвежий сигнал");
+  }
+  // 3. Анализ RSI
+  if (indicators.rsi14 < 30) {
+    buySignals++;
+    reasoning.push("🟢 RSI < 30 - перепроданность");
+  } else if (indicators.rsi14 > 70) {
+    sellSignals++;
+    reasoning.push("🔴 RSI > 70 - перекупленность");
+  }
+  // 4. Анализ Bollinger Bands
+  if (currentPrice < indicators.lowerBand) {
+    buySignals++;
+    reasoning.push("🎯 Цена ниже нижней полосы Боллинджера - потенциальный отскок вверх");
+  } else if (currentPrice > indicators.upperBand) {
+    sellSignals++;
+    reasoning.push("🎯 Цена выше верхней полосы Боллинджера - потенциальный откат вниз");
+  }
+  // 5. Анализ Stochastic
+  if (indicators.stochastic < 20) {
+    buySignals++;
+    reasoning.push("🎲 Стохастик < 20 - перепроданность");
+  } else if (indicators.stochastic > 80) {
+    sellSignals++;
+    reasoning.push("🎲 Стохастик > 80 - перекупленность");
+  }
+  // 6. Анализ объема
   if (indicators.volumeRatio > 1.5) {
-    if (currentPrice > candles[candles.length - 2].close) { buySignals++; reasoning.push("🔊 Высокий объем подтверждает восходящее движение"); }
-    else { sellSignals++; reasoning.push("🔊 Высокий объем подтверждает нисходящее движение"); }
+    if (currentPrice > candles[candles.length - 2].close) {
+      buySignals++;
+      reasoning.push("🔊 Высокий объем подтверждает восходящее движение");
+    } else {
+      sellSignals++;
+      reasoning.push("🔊 Высокий объем подтверждает нисходящее движение");
+    }
   }
-
+  // 7. Фундаментальный анализ
   if (fundamentalData) {
-    if (fundamentalData.marketCapRank <= 10) { buySignals += 0.5; reasoning.push("💎 Топ-10 по капитализации"); }
-    if (fundamentalData.developerActivity > 70) { buySignals += 0.5; reasoning.push("👨‍💻 Активные разработчики"); }
-    if (fundamentalData.socialSentiment > 70) { buySignals += 0.3; reasoning.push("💬 Позитивные настроения"); }
-    if (fundamentalData.communityGrowth > 0.1) { buySignals += 0.3; reasoning.push("👥 Рост сообщества"); }
+    if (fundamentalData.marketCapRank <= 10) {
+      buySignals += 0.5;
+      reasoning.push("💎 Топ-10 по рыночной капитализации - низкий риск");
+    }
+    if (fundamentalData.developerActivity > 70) {
+      buySignals += 0.5;
+      reasoning.push("👨‍💻 Высокая активность разработчиков - позитивный фактор");
+    }
+    if (fundamentalData.socialSentiment > 70) {
+      buySignals += 0.3;
+      reasoning.push("💬 Позитивные социальные настроения");
+    }
+    if (fundamentalData.communityGrowth > 0.1) {
+      buySignals += 0.3;
+      reasoning.push("👥 Рост сообщества - позитивный тренд");
+    }
   }
-
-  if (globalState.fearIndex < 30) { buySignals += 0.5; reasoning.push("😌 Индекс страха низкий"); }
-  else if (globalState.fearIndex > 70) { sellSignals += 0.5; reasoning.push("😱 Индекс страха высокий"); }
-
+  // 8. Индекс страха и жадности
+  if (globalState.fearIndex < 30) {
+    buySignals += 0.5;
+    reasoning.push("😌 Индекс страха низкий - хорошее время для покупок");
+  } else if (globalState.fearIndex > 70) {
+    sellSignals += 0.5;
+    reasoning.push("😱 Индекс страха высокий - осторожность на рынке");
+  }
   const direction = buySignals > sellSignals ? 'LONG' : 'SHORT';
   const confidence = Math.abs(buySignals - sellSignals) / (buySignals + sellSignals + 1);
-
   return {
     coin: coinName,
-    currentPrice,
-    signal: { direction, confidence, reasoning },
+    currentPrice: currentPrice,
+    signal: {
+      direction,
+      confidence,
+      leverage: globalState.maxLeverage,
+      reasoning
+    },
     indicators: {
       rsi: indicators.rsi14.toFixed(2),
       macd: indicators.macd.toFixed(4),
@@ -753,7 +823,7 @@ function setRiskLevel(level) {
 }
 
 // ==========================
-// HTTP-сервер
+// HTTP-сервер с паролем
 // ==========================
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -764,21 +834,749 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Middleware для аутентификации
 function authenticate(req, res, next) {
-  if (req.path === '/login' || req.path === '/favicon.ico') return next();
+  if (req.path === '/login' || req.path === '/favicon.ico') {
+    return next();
+  }
   if (req.cookies.authToken) return next();
   res.redirect('/login');
 }
 app.use(authenticate);
 
+// Создаем директорию для статических файлов, если она не существует
+if (!fs.existsSync(path.join(__dirname, 'public'))) {
+  fs.mkdirSync(path.join(__dirname, 'public'));
+}
+
+// Создаем index.html с паролем из переменной окружения
+const createIndexHtml = () => {
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Философ Рынка — Торговый Бот v6.1</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2c3e50;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --light: #f5f5f5;
+            --dark: #34495e;
+            --gray: #95a5a6;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 15px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            font-weight: 700;
+        }
+        .subtitle {
+            font-size: 1.3rem;
+            font-style: italic;
+            margin-bottom: 20px;
+            color: #bdc3c7;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .card-title {
+            font-size: 1.2rem;
+            color: #bdc3c7;
+            margin-bottom: 12px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .card-value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .card-subtitle {
+            color: #95a5a6;
+            font-size: 0.9rem;
+            margin-top: 8px;
+            font-weight: 400;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .status-real {
+            background: rgba(39, 174, 96, 0.2);
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        .status-demo {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px 5px 5px 0;
+            letter-spacing: 0.5px;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(52, 152, 219, 0.4);
+        }
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+        .btn-success:hover {
+            background: #219a52;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(39, 174, 96, 0.4);
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(231, 76, 60, 0.4);
+        }
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
+        }
+        .btn-warning:hover {
+            background: #d35400;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(243, 156, 18, 0.4);
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        table {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            border-collapse: collapse;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        th, td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            font-size: 0.95rem;
+        }
+        th {
+            background: rgba(52, 152, 219, 0.1);
+            color: #bdc3c7;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-size: 0.85rem;
+        }
+        tr:hover {
+            background: rgba(255,255,255,0.08);
+        }
+        .profit {
+            color: #27ae60;
+            font-weight: 700;
+        }
+        .loss {
+            color: #e74c3c;
+            font-weight: 700;
+        }
+        .log-entry {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .log-time {
+            color: var(--gray);
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+        }
+        .log-coin {
+            font-weight: 600;
+            color: #ecf0f1;
+        }
+        .log-signal {
+            font-weight: 700;
+            margin-left: 8px;
+        }
+        .log-buy {
+            color: #27ae60;
+        }
+        .log-sell {
+            color: #e74c3c;
+        }
+        .log-confidence {
+            display: inline-block;
+            background: rgba(243, 156, 18, 0.2);
+            color: #f39c12;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        .analysis-log {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .section-header {
+            font-size: 1.4rem;
+            margin: 30px 0 20px 0;
+            color: white;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+        .indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .indicator-green {
+            background: #27ae60;
+        }
+        .indicator-yellow {
+            background: #f39c12;
+        }
+        .indicator-red {
+            background: #e74c3c;
+        }
+        .indicator-gray {
+            background: #95a5a6;
+        }
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+        .logout-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        .loading {
+            color: #95a5a6;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            .card-value {
+                font-size: 1.8rem;
+            }
+            th, td {
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+            .btn {
+                padding: 10px 18px;
+                font-size: 0.9rem;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="logout-btn" onclick="logout()">Выйти</button>
+    <div class="container">
+        <header>
+            <h1>Философ Рынка — Торговый Бот v6.1</h1>
+            <p class="subtitle">Система принятия решений на основе фундаментального и технического анализа</p>
+        </header>
+        <div class="dashboard">
+            <div class="card">
+                <div class="card-title">Текущий баланс</div>
+                <div class="card-value" id="balance">$7.11</div>
+                <div class="card-subtitle">
+                    <span id="balanceMode">Реальный баланс</span>
+                    <span class="status-badge" id="modeBadge">РЕАЛ</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Режим торговли</div>
+                <div class="card-value" id="tradeMode">scalping</div>
+                <div class="card-subtitle">Текущая стратегия</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Уровень риска</div>
+                <div class="card-value" id="riskLevel">high</div>
+                <div class="card-subtitle">Макс. риск: 5%</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Индекс страха</div>
+                <div class="card-value" id="fearIndex">55</div>
+                <div class="card-subtitle">Настроения рынка</div>
+            </div>
+        </div>
+
+        <h2 class="section-header">Статистика торговли</h2>
+        <div class="dashboard">
+            <div class="card">
+                <div class="card-title">Всего сделок</div>
+                <div class="card-value" id="totalTrades">0</div>
+                <div class="card-subtitle">С начала работы</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Прибыльных</div>
+                <div class="card-value" id="profitableTrades">0</div>
+                <div class="card-subtitle">Успешные сделки</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Убыточных</div>
+                <div class="card-value" id="losingTrades">0</div>
+                <div class="card-subtitle">Неудачные сделки</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Процент успеха</div>
+                <div class="card-value" id="winRate">0.0%</div>
+                <div class="card-subtitle">Win Rate</div>
+            </div>
+        </div>
+
+        <h2 class="section-header">Открытые позиции</h2>
+        <div class="positions-table">
+            <table id="positionsTable">
+                <thead>
+                    <tr>
+                        <th>Монета</th>
+                        <th>Тип</th>
+                        <th>Размер</th>
+                        <th>Цена входа</th>
+                        <th>Текущая цена</th>
+                        <th>Прибыль/Убыток</th>
+                        <th>Риск</th>
+                    </tr>
+                </thead>
+                <tbody id="positionsBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: #95a5a6;">Нет открытых позиций</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="section-header">Последние сделки</h2>
+        <div class="history-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Время</th>
+                        <th>Монета</th>
+                        <th>Тип</th>
+                        <th>Цена входа</th>
+                        <th>Цена выхода</th>
+                        <th>Прибыль</th>
+                        <th>Риск</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: #95a5a6;">Нет истории сделок</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="section-header">Лог философского анализа</h2>
+        <div class="analysis-log" id="analysisLog">
+            <div class="log-entry">
+                <div class="log-time">[00:00:00]</div>
+                <div><span class="log-coin">Бот запущен</span>: Ожидание данных с BingX API...</div>
+            </div>
+        </div>
+
+        <h2 class="section-header">Управление капиталом</h2>
+        <div class="controls">
+            <button class="btn btn-primary" onclick="toggleMode()">🔄 Переключить режим (ДЕМО/РЕАЛ)</button>
+            <button class="btn btn-primary" onclick="toggleTradeMode()">⚡ Сменить стратегию</button>
+            <button class="btn btn-success" onclick="setRiskLevel('recommended')">📉 Стандартный риск</button>
+            <button class="btn btn-warning" onclick="setRiskLevel('medium')">⚖️ Средний риск</button>
+            <button class="btn btn-danger" onclick="setRiskLevel('high')">🚀 Высокий риск</button>
+        </div>
+    </div>
+    <script>
+        function toggleMode() {
+            fetch('/toggle-mode', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateUI();
+                    }
+                });
+        }
+
+        function toggleTradeMode() {
+            fetch('/toggle-trade-mode', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateUI();
+                    }
+                });
+        }
+
+        function setRiskLevel(level) {
+            fetch('/set-risk-level', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ level: level })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateUI();
+                }
+            });
+        }
+
+        function logout() {
+            fetch('/logout', { method: 'GET' })
+                .then(() => {
+                    window.location.href = '/login';
+                });
+        }
+
+        function updateUI() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    const displayBalance = data.isRealMode ? (data.realBalance || 0) : data.balance;
+                    const balanceModeText = data.isRealMode ? 'Реальный баланс' : 'Демо-баланс';
+                    const modeBadgeText = data.isRealMode ? 'РЕАЛ' : 'ДЕМО';
+                    document.getElementById('balance').textContent = '$' + displayBalance.toFixed(2);
+                    document.getElementById('balanceMode').textContent = balanceModeText;
+                    document.getElementById('modeBadge').textContent = modeBadgeText;
+                    document.getElementById('modeBadge').className = 'status-badge ' + (data.isRealMode ? 'status-real' : 'status-demo');
+
+                    document.getElementById('tradeMode').textContent = data.tradeMode;
+                    document.getElementById('riskLevel').textContent = data.riskLevel;
+
+                    let riskLabel = '';
+                    if (data.riskLevel === 'recommended') riskLabel = 'Макс. риск: 1%';
+                    else if (data.riskLevel === 'medium') riskLabel = 'Макс. риск: 2%';
+                    else if (data.riskLevel === 'high') riskLabel = 'Макс. риск: 5%';
+                    document.querySelector('.card:nth-child(3) .card-subtitle').textContent = riskLabel;
+
+                    document.getElementById('fearIndex').textContent = data.fearIndex;
+
+                    document.getElementById('totalTrades').textContent = data.stats.totalTrades;
+                    document.getElementById('profitableTrades').textContent = data.stats.profitableTrades;
+                    document.getElementById('losingTrades').textContent = data.stats.losingTrades;
+                    document.getElementById('winRate').textContent = data.stats.winRate.toFixed(1) + '%';
+
+                    const positionsBody = document.getElementById('positionsBody');
+                    if (data.openPositions && data.openPositions.length > 0) {
+                        positionsBody.innerHTML = data.openPositions.map(pos => {
+                            const currentPrice = data.currentPrices[pos.coin] || 0;
+                            const profitPercent = pos.type === 'LONG' 
+                                ? (currentPrice - pos.entryPrice) / pos.entryPrice
+                                : (pos.entryPrice - currentPrice) / pos.entryPrice;
+                            const profitClass = profitPercent > 0 ? 'profit' : 'loss';
+                            return '<tr>' +
+                                '<td>' + (pos.coin || '...') + '</td>' +
+                                '<td>' + (pos.type || '...') + '</td>' +
+                                '<td>' + (pos.size ? pos.size.toFixed(6) : '...') + '</td>' +
+                                '<td>$' + (pos.entryPrice ? pos.entryPrice.toFixed(4) : '...') + '</td>' +
+                                '<td>$' + currentPrice.toFixed(4) + '</td>' +
+                                '<td class="' + profitClass + '">' + (profitPercent * 100).toFixed(2) + '%</td>' +
+                                '<td>' + (pos.riskScore ? pos.riskScore.toFixed(0) : '...') + '</td>' +
+                                '</tr>';
+                        }).join('');
+                    } else {
+                        positionsBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #95a5a6;">Нет открытых позиций</td></tr>';
+                    }
+
+                    const historyBody = document.getElementById('historyBody');
+                    if (data.history && data.history.length > 0) {
+                        historyBody.innerHTML = data.history.slice(-10).map(h => {
+                            const profitClass = h.profitPercent > 0 ? 'profit' : 'loss';
+                            return '<tr>' +
+                                '<td>' + (h.timestamp || '...') + '</td>' +
+                                '<td>' + (h.coin || '...') + '</td>' +
+                                '<td>' + (h.type || '...') + '</td>' +
+                                '<td>$' + (h.entryPrice ? h.entryPrice.toFixed(4) : '...') + '</td>' +
+                                '<td>$' + (h.exitPrice ? h.exitPrice.toFixed(4) : '...') + '</td>' +
+                                '<td class="' + profitClass + '">' + (h.profitPercent ? (h.profitPercent > 0 ? '+' : '') + (h.profitPercent * 100).toFixed(2) + '%' : '...') + '</td>' +
+                                '<td>' + (h.riskScore ? h.riskScore.toFixed(0) : '...') + '</td>' +
+                                '</tr>';
+                        }).join('');
+                    } else {
+                        historyBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #95a5a6;">Нет истории сделок</td></tr>';
+                    }
+
+                    const analysisLog = document.getElementById('analysisLog');
+                    if (data.lastAnalysis && data.lastAnalysis.length > 0) {
+                        analysisLog.innerHTML = '';
+                        data.lastAnalysis.slice(-5).forEach(analysis => {
+                            const logEntry = document.createElement('div');
+                            logEntry.className = 'log-entry';
+                            const confidence = (analysis.signal.confidence * 100).toFixed(1);
+                            logEntry.innerHTML = '<div class="log-time">[' + new Date().toLocaleTimeString() + ']</div>' +
+                                '<div>' +
+                                '<span class="log-coin">' + (analysis.coin || '...') + '</span>: ' +
+                                '<span class="log-signal ' + (analysis.signal.direction === 'LONG' ? 'log-buy' : 'log-sell') + '">' +
+                                (analysis.signal.direction || '...') +
+                                '</span> ' +
+                                '<span class="log-confidence">' + confidence + '%</span>' +
+                                '</div>';
+                            analysisLog.insertBefore(logEntry, analysisLog.firstChild);
+                        });
+                    } else {
+                        if (analysisLog.children.length === 0) {
+                            const logEntry = document.createElement('div');
+                            logEntry.className = 'log-entry';
+                            logEntry.innerHTML = '<div class="log-time">[' + new Date().toLocaleTimeString() + ']</div>' +
+                                '<div><span class="log-coin">Ожидание сигнала</span>: Анализируем рынок...</div>';
+                            analysisLog.appendChild(logEntry);
+                        }
+                    }
+
+                    const pricesAvailable = data.currentPrices && Object.keys(data.currentPrices).length > 0;
+                    if (!pricesAvailable && analysisLog.children.length === 0) {
+                        const logEntry = document.createElement('div');
+                        logEntry.className = 'log-entry';
+                        logEntry.innerHTML = '<div class="log-time">[' + new Date().toLocaleTimeString() + ']</div>' +
+                            '<div><span class="log-coin">⚠️ Внимание</span>: Не удалось получить цены с BingX. Проверьте ключи API.</div>';
+                        analysisLog.appendChild(logEntry);
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка обновления данных:', error);
+                    const analysisLog = document.getElementById('analysisLog');
+                    const logEntry = document.createElement('div');
+                    logEntry.className = 'log-entry';
+                    logEntry.innerHTML = '<div class="log-time">[' + new Date().toLocaleTimeString() + ']</div>' +
+                        '<div><span class="log-coin">❌ Ошибка</span>: Не удалось получить данные от сервера. Проверьте подключение.</div>';
+                    analysisLog.appendChild(logEntry);
+                });
+        }
+
+        updateUI();
+        setInterval(updateUI, 10000);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                updateUI();
+            }
+        });
+    </script>
+</body>
+</html>
+  `;
+  fs.writeFileSync(path.join(__dirname, 'public', 'index.html'), htmlContent, 'utf8');
+  console.log('✅ Файл index.html успешно создан с паролем из переменной окружения');
+};
+
+// Создаем index.html при запуске
+createIndexHtml();
+
+// Страница входа
 app.get('/login', (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html lang="ru">
-    <head><meta charset="UTF-8"><title>Вход в систему</title>
-    <style>body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.login-form{background:white;padding:40px;border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,0.1);text-align:center;width:100%;max-width:450px}input{width:100%;padding:15px;margin:15px 0;border:2px solid #e0e0e0;border-radius:8px;font-size:16px}button{width:100%;padding:15px;background:#3498db;color:white;border:none;border-radius:8px;cursor:pointer;font-size:18px;font-weight:bold}button:hover{background:#2980b9}h2{color:#2c3e50;margin-bottom:30px;font-size:28px}.logo{margin-bottom:30px;color:#3498db;font-size:36px;font-weight:bold}</style></head>
-    <body><div class="login-form"><div class="logo">Философ Рынка</div><h2>Торговый Бот v6.1</h2><form id="loginForm"><input type="password" name="password" placeholder="Введите пароль" required><button type="submit">Войти в систему</button></form></div>
-    <script>document.getElementById('loginForm').addEventListener('submit', async (e) => { e.preventDefault(); const password = document.querySelector('input[name="password"]').value; const res = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); const data = await res.json(); if (data.success) { document.cookie = "authToken=true; path=/; max-age=86400"; window.location.href = '/'; } else { alert('❌ Неверный пароль.'); document.querySelector('input[name="password"]').value = ''; } });</script></body></html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Вход в систему</title>
+      <style>
+        body { 
+          font-family: sans-serif; 
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          display: flex; 
+          justify-content: center; 
+          align-items: center; 
+          min-height: 100vh; 
+          margin: 0; 
+        }
+        .login-form { 
+          background: white; 
+          padding: 40px; 
+          border-radius: 15px; 
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+          text-align: center; 
+          width: 100%; 
+          max-width: 450px; 
+        }
+        input { 
+          width: 100%; 
+          padding: 15px; 
+          margin: 15px 0; 
+          border: 2px solid #e0e0e0; 
+          border-radius: 8px; 
+          font-size: 16px;
+          transition: border-color 0.3s;
+        }
+        input:focus {
+          outline: none;
+          border-color: #3498db;
+        }
+        button { 
+          width: 100%; 
+          padding: 15px; 
+          background: #3498db; 
+          color: white; 
+          border: none; 
+          border-radius: 8px; 
+          cursor: pointer; 
+          font-size: 18px; 
+          font-weight: bold;
+          transition: background 0.3s;
+        }
+        button:hover { 
+          background: #2980b9; 
+        }
+        h2 { 
+          color: #2c3e50; 
+          margin-bottom: 30px; 
+          font-size: 28px;
+        }
+        .logo {
+          margin-bottom: 30px;
+          color: #3498db;
+          font-size: 36px;
+          font-weight: bold;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="login-form">
+        <div class="logo">Философ Рынка</div>
+        <h2>Торговый Бот v6.1</h2>
+        <form id="loginForm">
+          <input type="password" name="password" placeholder="Введите пароль" required>
+          <button type="submit">Войти в систему</button>
+        </form>
+      </div>
+      <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const password = document.querySelector('input[name="password"]').value;
+          const res = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+          });
+          const data = await res.json();
+          if (data.success) {
+            document.cookie = "authToken=true; path=/; max-age=86400";
+            window.location.href = '/';
+          } else {
+            alert('❌ Неверный пароль. Попробуйте снова.');
+            document.querySelector('input[name="password"]').value = '';
+          }
+        });
+      </script>
+    </body>
+    </html>
   `);
 });
 
@@ -797,6 +1595,7 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
+// API эндпоинты
 app.post('/toggle-mode', (req, res) => {
   const newMode = toggleMode();
   res.json({ success: true, isRealMode: newMode });
@@ -823,7 +1622,7 @@ app.get('/api/status', (req, res) => {
     riskLevel: globalState.riskLevel,
     fearIndex: globalState.fearIndex,
     stats: globalState.stats,
-    openPositions,
+    openPositions: openPositions,
     history: globalState.history,
     currentPrices: globalState.currentPrices,
     lastAnalysis: globalState.lastAnalysis || []
@@ -834,20 +1633,23 @@ app.get('/api/status', (req, res) => {
 // ГЛАВНАЯ ФУНКЦИЯ — ЦИКЛ БОТА
 // ==========================
 (async () => {
-  console.log('🤖 ЗАПУСК ТОРГОВОГО БОТА v6.1 — ИСПРАВЛЕНА ОШИБКА SERVER TIME');
+  console.log('🤖 ЗАПУСК ТОРГОВОГО БОТА v6.1 — ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ');
   console.log('🔑 API-ключи: ЗАДАНЫ');
   console.log('🔐 Секретный ключ: ЗАДАН');
   console.log('✅ Проверка доступных монет на BingX...');
 
-  // Проверяем доступность монет через правильный эндпоинт SPOT
+  // Проверяем, какие монеты доступны
   for (const coin of [...globalState.watchlist]) {
     console.log(`🔍 Проверка доступности ${coin.symbol}...`);
     try {
       const serverTime = await getBingXServerTime();
       const params = { symbol: coin.symbol, timestamp: serverTime, recvWindow: 5000 };
       const signature = signBingXRequest(params);
-      const url = `${BINGX_API_BASE_URL}/openApi/spot/v2/market/ticker?symbol=${params.symbol}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
-      const response = await axios.get(url, { headers: { 'X-BX-APIKEY': BINGX_API_KEY }, timeout: 10000 });
+      const url = `${getCurrentApiDomain()}/openApi/spot/v2/market/ticker?symbol=${params.symbol}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
+      const response = await axios.get(url, {
+        headers: { 'X-BX-APIKEY': BINGX_API_KEY },
+        timeout: 10000
+      });
       if (response.data.code === 0 && response.data.data && response.data.data.price) {
         console.log(`✅ Монета ${coin.symbol} доступна на BingX`);
       } else {
@@ -948,6 +1750,9 @@ app.get('/api/status', (req, res) => {
 
     } catch (error) {
       console.error('💥 КРИТИЧЕСКАЯ ОШИБКА В ЦИКЛЕ:', error.message);
+      if (error.response?.status === 403 || error.response?.status === 429) {
+        switchToNextApiDomain();
+      }
       await new Promise(r => setTimeout(r, 60000));
     }
   }
