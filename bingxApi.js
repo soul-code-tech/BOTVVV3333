@@ -11,13 +11,14 @@ const API_KEY = process.env.BINGX_API_KEY;
 const SECRET_KEY = process.env.BINGX_SECRET_KEY;
 
 if (!API_KEY || !SECRET_KEY) {
-    throw new Error("API keys not configured");
+    throw new Error("API keys not configured in environment variables");
 }
 
 function generateSignature(payload, urlEncode = true) {
     const timestamp = Date.now();
     let parameters = "";
 
+    // Формируем строку параметров
     for (const key in payload) {
         if (urlEncode && key !== 'timestamp') {
             parameters += `${key}=${encodeURIComponent(payload[key])}&`;
@@ -26,79 +27,95 @@ function generateSignature(payload, urlEncode = true) {
         }
     }
 
+    // Добавляем timestamp, если он не был в payload
     if (!payload.timestamp) {
         parameters += `timestamp=${timestamp}`;
     } else {
-        parameters = parameters.slice(0, -1);
+        parameters = parameters.slice(0, -1); // Убираем последний '&'
     }
 
+    // Генерируем подпись HMAC SHA256
     const signature = CryptoJS.HmacSHA256(parameters, SECRET_KEY).toString(CryptoJS.enc.Hex);
-    return { parameters, signature, timestamp };
+
+    return {
+        parameters,
+        signature,
+        timestamp
+    };
 }
 
 export async function callBingxApi(path, method = 'GET', payload = {}) {
     try {
+        // Генерируем подпись и параметры
         const { parameters, signature } = generateSignature(payload, method === 'GET');
-        let url;
 
+        let url;
         if (method === 'GET') {
+            // Для GET-запросов параметры идут в query string
             url = `${PROTOCOL}://${HOST}${path}?${parameters}&signature=${signature}`;
         }
 
         const config = {
-            method,
-            url,
-            headers: { 'X-BX-APIKEY': API_KEY },
-            ...(method !== 'GET' && { data: { ...payload, signature } })
+            method: method,
+            url: url,
+            headers: {
+                'X-BX-APIKEY': API_KEY,
+            },
+            // Для POST-запросов параметры и подпись идут в теле
+            ...(method !== 'GET' && {
+                 {
+                    ...payload,
+                    signature: signature
+                }
+            })
         };
 
         const response = await axios(config);
 
+        // Проверяем успешность запроса по коду BingX
         if (response.data.code !== 0) {
             throw new Error(`BingX API Error [${response.data.code}]: ${response.data.msg}`);
         }
 
-        return response.data.data;
+        return response.data.data; // Возвращаем только полезные данные
     } catch (error) {
-        console.error(`API Error for ${path}:`, error.message);
-        if (error.response?.data?.code) {
-            handleBingxErrorCode(error.response.data.code);
+        // Централизованная обработка ошибок
+        console.error(`API Request Failed for ${path}:`, error.message);
+
+        // Самодиагностика: логируем коды ошибок для последующего анализа
+        if (error.response && error.response.data) {
+            const errorCode = error.response.data.code;
+            console.warn(`[SELF-DIAGNOSTIC] BingX Error ${errorCode}: ${error.response.data.msg}`);
         }
-        throw error;
+
+        throw error; // Пробрасываем ошибку дальше для обработки в логике бота
     }
 }
 
-function handleBingxErrorCode(code) {
-    const errors = {
-        100001: "Ошибка подписи",
-        100419: "IP не в белом списке",
-        101204: "Недостаточно средств",
-        429: "Слишком много запросов",
-        100410: "Превышен лимит частоты",
-        101212: "Есть активные ордера"
-    };
-    if (errors[code]) console.warn(`[DIAGNOSTIC] ${errors[code]}`);
-}
+// Экспортируем полезные функции для торговли и анализа
 
-// SPOT API
+// Получение текущей цены тикера
 export async function getTickerPrice(symbol) {
     return await callBingxApi(`/openApi/swap/v1/ticker/price`, 'GET', { symbol });
 }
 
+// Получение данных Kline для технического анализа
 export async function getKlines(symbol, interval, limit = 100) {
     return await callBingxApi(`/openApi/swap/v3/quote/klines`, 'GET', { symbol, interval, limit });
 }
 
+// Получение баланса пользователя (требует разрешений на чтение аккаунта)
 export async function getAccountInfo() {
     return await callBingxApi(`/openApi/swap/v2/user/balance`, 'GET', {});
 }
 
+// Получение списка активных ордеров
 export async function getOpenOrders(symbol) {
     return await callBingxApi(`/openApi/swap/v2/trade/openOrders`, 'GET', { symbol });
 }
 
-export async function createOrder(symbol, side, type, quantity, price = null) {
-    const payload = { symbol, side, type, quantity, timestamp: Date.now() };
-    if (price) payload.price = price;
-    return await callBingxApi(`/openApi/swap/v2/trade/order`, 'POST', payload);
+// Получение времени сервера (для синхронизации)
+export async function getServerTime() {
+    const response = await axios.get(`${PROTOCOL}://${HOST}/openApi/swap/v2/server/time`);
+    return response.data.data.serverTime;
 }
