@@ -1,50 +1,217 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Торговый бот — Панель управления</title>
+    <title>📈 Бот BingX Spot</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
-        .container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        button { padding: 10px 20px; margin: 10px 0; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
+        body { font-family: Arial; padding: 10px; background: #f0f2f5; }
+        .container { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #1890ff; font-size: 1.2rem; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+        select, input, button { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        button { background: #1890ff; color: white; font-weight: bold; border: none; cursor: pointer; }
+        button:hover { background: #0c7cd5; }
+        .status-card { background: #fafafa; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .toggle-group { display: flex; justify-content: space-between; align-items: center; background: #f5f5f5; padding: 10px; border-radius: 6px; margin: 10px 0; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Панель управления ботом</h1>
-        
-        <div id="auth-section">
-            <label>🔒 Пароль доступа:</label>
-            <input type="password" id="password" placeholder="Введите пароль">
-            <button onclick="authenticate()">Войти</button>
+        <div id="auth">
+            <h3 style="text-align:center;">🔒 Введите пароль</h3>
+            <input type="password" id="pwd" placeholder="Пароль доступа" autocomplete="current-password">
+            <button onclick="login()" style="margin-top: 10px;">Войти</button>
         </div>
 
-        <div id="main-section" style="display: none;">
-            <p>✅ Добро пожаловать! Интерфейс работает.</p>
-            <button onclick="alert('Успешный вход!')">Тест кнопки</button>
+        <div id="main" style="display:none;">
+            <h1>🤖 Бот BingX Spot</h1>
+            
+            <div class="form-group">
+                <label>Торговая пара:</label>
+                <select id="pair">
+                    <!-- Список будет заполнен JavaScript -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Стратегия:</label>
+                <select id="strategy">
+                    <option value="stochastic">Стохастик</option>
+                    <option value="rsi">RSI</option>
+                    <option value="combo">Комбо (3 индикатора)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Риск (1-10): <span id="riskVal">5</span></label>
+                <input type="range" id="risk" min="1" max="10" value="5">
+            </div>
+
+            <div class="toggle-group">
+                <span>🔍 Сканировать все 200+ пар</span>
+                <input type="checkbox" id="scanAll">
+            </div>
+
+            <button onclick="saveSettings()" style="background:#52c41a; margin-top: 10px;">💾 Сохранить настройки</button>
+            <button onclick="tradeNow()" style="background:#faad14; margin-top: 10px;">⚡ Торговать сейчас</button>
+
+            <div class="status-card">
+                <h3 style="font-size: 1rem;">📊 Текущее состояние</h3>
+                <div><strong>Анализ:</strong> <span id="analysisStatus">Ожидание...</span></div>
+                <div><strong>Последний сигнал:</strong> <span id="lastSignal">-</span></div>
+                <div><strong>Цена:</strong> <span id="price">-</span></div>
+                <div><strong>Баланс:</strong> <span id="balance">-</span></div>
+                <div><strong>Обновлено:</strong> <span id="lastUpdate">-</span></div>
+            </div>
         </div>
     </div>
 
     <script>
-        async function authenticate() {
-            const pwd = document.getElementById('password').value;
+        let token = null;
+        const pairs = [
+            "BTC-USDT", "ETH-USDT", "BNB-USDT", "SOL-USDT", "XRP-USDT", "USDC-USDT", "ADA-USDT", "DOGE-USDT", "TRX-USDT", "TON-USDT",
+            "AVAX-USDT", "SHIB-USDT", "LINK-USDT", "BCH-USDT", "DOT-USDT", "LTC-USDT", "NEAR-USDT", "MATIC-USDT", "ICP-USDT", "APT-USDT",
+            "UNI-USDT", "STX-USDT", "FET-USDT", "RNDR-USDT", "ATOM-USDT", "IMX-USDT", "INJ-USDT", "OP-USDT", "HBAR-USDT", "TIA-USDT",
+            "RUNE-USDT", "AR-USDT", "MKR-USDT", "SUI-USDT", "SEI-USDT", "AAVE-USDT", "GRT-USDT", "FIL-USDT", "LDO-USDT", "MINA-USDT",
+            "ALGO-USDT", "EGLD-USDT", "FLOW-USDT", "QNT-USDT", "AXS-USDT", "MANA-USDT", "SAND-USDT", "THETA-USDT", "VET-USDT", "XLM-USDT",
+            "EOS-USDT", "XTZ-USDT", "KAVA-USDT", "GALA-USDT", "DYDX-USDT", "CRV-USDT", "SNX-USDT", "KSM-USDT", "ZIL-USDT", "CHZ-USDT",
+            "ENJ-USDT", "BAT-USDT", "ZEC-USDT", "DASH-USDT", "NEXO-USDT", "COMP-USDT", "YFI-USDT", "CAKE-USDT", "1INCH-USDT", "LRC-USDT",
+            "OMG-USDT", "CELO-USDT", "AMP-USDT", "ANKR-USDT", "AUDIO-USDT", "BAND-USDT", "BLZ-USDT", "C98-USDT", "CTSI-USDT", "CVC-USDT",
+            "DGB-USDT", "DNT-USDT", "ELF-USDT", "FLUX-USDT", "FTM-USDT", "FXS-USDT", "GAS-USDT", "GLMR-USDT", "GMT-USDT", "GODS-USDT",
+            "HIGH-USDT", "HNT-USDT", "ICX-USDT", "IOST-USDT", "IOTA-USDT", "JASMY-USDT", "JOE-USDT", "JST-USDT", "KDA-USDT", "KLAY-USDT",
+            "LINA-USDT", "LOKA-USDT", "LPT-USDT", "LQTY-USDT", "LUNA-USDT", "MASK-USDT", "MDT-USDT", "METIS-USDT", "MOVR-USDT", "MTL-USDT",
+            "NKN-USDT", "OCEAN-USDT", "OGN-USDT", "ONT-USDT", "ORN-USDT", "OXT-USDT", "PERP-USDT", "PHA-USDT", "PIVX-USDT", "POLY-USDT",
+            "POWR-USDT", "PYR-USDT", "QI-USDT", "QTUM-USDT", "RAD-USDT", "REEF-USDT", "REN-USDT", "REQ-USDT", "RLC-USDT", "RSR-USDT",
+            "RVN-USDT", "SFP-USDT", "SKL-USDT", "SLP-USDT", "SNM-USDT", "SNT-USDT", "STORJ-USDT", "SUSHI-USDT", "SXP-USDT", "TFUEL-USDT",
+            "TOMO-USDT", "TRB-USDT", "TUSD-USDT", "UMA-USDT", "UTK-USDT", "VTHO-USDT", "WAVES-USDT", "WAXP-USDT", "WOO-USDT", "XEM-USDT",
+            "XMR-USDT", "XNO-USDT", "XVS-USDT", "YGG-USDT", "ZRX-USDT", "ACH-USDT", "AGLD-USDT", "AKRO-USDT", "ALCX-USDT", "ALICE-USDT",
+            "ALPHA-USDT", "ARPA-USDT", "ASTR-USDT", "ATA-USDT", "AUCTION-USDT", "BADGER-USDT", "BAL-USDT", "BICO-USDT", "BOND-USDT",
+            "BSW-USDT", "BURGER-USDT", "CELR-USDT", "CHESS-USDT", "CHR-USDT", "CLV-USDT", "COTI-USDT", "CRO-USDT", "CTK-USDT", "DAR-USDT",
+            "DENT-USDT", "DEXE-USDT", "DIA-USDT", "DODO-USDT", "DREP-USDT", "DUSK-USDT", "EDU-USDT", "EFI-USDT", "ELON-USDT", "ERN-USDT",
+            "FIDA-USDT", "FLM-USDT", "FOR-USDT", "FRONT-USDT", "FUN-USDT", "GHST-USDT", "GLM-USDT", "GNS-USDT", "GTC-USDT", "HARD-USDT",
+            "HERO-USDT", "HOT-USDT", "IDEX-USDT", "ILV-USDT", "IOTX-USDT", "IRIS-USDT", "JUV-USDT", "KNC-USDT", "KP3R-USDT", "LAZIO-USDT",
+            "LIT-USDT", "MAGIC-USDT", "MBL-USDT", "MIR-USDT", "NBS-USDT", "NMR-USDT", "OM-USDT", "OOKI-USDT", "PARA-USDT", "PAXG-USDT",
+            "PEOPLE-USDT", "PERL-USDT", "PLA-USDT", "PNT-USDT", "PROS-USDT", "PUNDIX-USDT", "QLC-USDT", "RARE-USDT", "RAY-USDT", "ROSE-USDT",
+            "SPELL-USDT", "SRM-USDT", "STMX-USDT", "STPT-USDT", "STRAX-USDT", "SUN-USDT", "SYS-USDT", "TCT-USDT", "TKO-USDT", "TLM-USDT",
+            "TVK-USDT", "UFT-USDT", "UNFI-USDT", "VGX-USDT", "VIB-USDT", "VIDT-USDT", "VITE-USDT", "VOXEL-USDT", "WAN-USDT", "WING-USDT",
+            "WNXM-USDT", "WRX-USDT", "ZEN-USDT"
+        ];
+
+        document.getElementById('risk').addEventListener('input', e => {
+            document.getElementById('riskVal').textContent = e.target.value;
+        });
+
+        function populatePairs() {
+            const select = document.getElementById('pair');
+            pairs.forEach(pair => {
+                const opt = document.createElement('option');
+                opt.value = pair;
+                opt.textContent = pair;
+                select.appendChild(opt);
+            });
+        }
+
+        async function login() {
+            const pwd = document.getElementById('pwd').value;
+            if (!pwd) {
+                alert('Введите пароль');
+                return;
+            }
             try {
-                const response = await fetch('/api/bot/status', {
+                const res = await fetch('/api/bot/status', {
                     headers: { 'Authorization': `Bearer ${pwd}` }
                 });
-                if (response.ok) {
-                    document.getElementById('auth-section').style.display = 'none';
-                    document.getElementById('main-section').style.display = 'block';
+                if (res.ok) {
+                    token = pwd;
+                    document.getElementById('auth').style.display = 'none';
+                    document.getElementById('main').style.display = 'block';
+                    populatePairs();
+                    loadStatus();
+                    setInterval(loadStatus, 10000);
                 } else {
-                    alert('❌ Неверный пароль');
+                    alert('Неверный пароль');
                 }
-            } catch (error) {
-                alert('Ошибка: ' + error.message);
+            } catch (e) {
+                alert('Ошибка подключения: ' + e.message);
             }
         }
+
+        async function loadStatus() {
+            try {
+                const res = await fetch('/api/bot/status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const s = data.data;
+                    document.getElementById('lastSignal').textContent = s.settings.lastSignal || 'NEUTRAL';
+                    document.getElementById('price').textContent = s.currentPrice || 'N/A';
+                    document.getElementById('balance').textContent = s.availableBalance || 'N/A';
+                    document.getElementById('lastUpdate').textContent = s.lastUpdate ? new Date(s.lastUpdate).toLocaleTimeString() : 'Никогда';
+                    document.getElementById('analysisStatus').textContent = s.settings.scanAllPairs ? 'Сканирует все пары' : 'Анализирует выбранную пару';
+                    document.getElementById('scanAll').checked = s.settings.scanAllPairs;
+                    document.getElementById('pair').value = s.settings.tradingPair;
+                    document.getElementById('strategy').value = s.settings.strategy;
+                    document.getElementById('risk').value = s.settings.riskLevel;
+                    document.getElementById('riskVal').textContent = s.settings.riskLevel;
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки статуса:', e);
+            }
+        }
+
+        async function saveSettings() {
+            const settings = {
+                tradingPair: document.getElementById('pair').value,
+                strategy: document.getElementById('strategy').value,
+                riskLevel: parseInt(document.getElementById('risk').value),
+                scanAllPairs: document.getElementById('scanAll').checked
+            };
+            try {
+                const res = await fetch('/api/bot/settings', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`, 
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify(settings)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('✅ Настройки сохранены!');
+                    loadStatus();
+                } else {
+                    alert('❌ Ошибка: ' + result.error);
+                }
+            } catch (e) {
+                alert('❌ Ошибка сохранения: ' + e.message);
+            }
+        }
+
+        async function tradeNow() {
+            if (confirm('Запустить анализ сейчас?')) {
+                try {
+                    const res = await fetch('/api/bot/trade-now', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        alert('✅ Анализ запущен!');
+                        loadStatus();
+                    } else {
+                        alert('❌ Ошибка: ' + result.error);
+                    }
+                } catch (e) {
+                    alert('❌ Ошибка запуска: ' + e.message);
+                }
+            }
+        }
+
+        // Заполняем список пар при загрузке
+        populatePairs();
     </script>
 </body>
 </html>
