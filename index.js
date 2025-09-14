@@ -158,7 +158,14 @@ let globalState = {
   fearIndex: 50,
   bingxCache: {},
   fundamentalCache: {},
-  lastAnalysis: []
+  lastAnalysis: [],
+  apiHealth: {
+    serverTime: true,
+    balance: true,
+    prices: true,
+    orders: true,
+    lastCheck: Date.now()
+  }
 };
 
 globalState.watchlist.forEach(coin => {
@@ -225,6 +232,70 @@ function signBingXRequest(params) {
     }
   }
   return CryptoJS.HmacSHA256(paramString, BINGX_SECRET_KEY).toString(CryptoJS.enc.Hex);
+}
+
+// ==========================
+// ФУНКЦИЯ: Самодиагностика API
+// ==========================
+async function runApiSelfDiagnosis() {
+  console.log('🔍 [DIAGNOSIS] Запуск самодиагностики API...');
+  let health = {
+    serverTime: false,
+    balance: false,
+    prices: false,
+    orders: false,
+    lastCheck: Date.now()
+  };
+
+  // 1. Проверка серверного времени
+  try {
+    const response = await axios.get(`${getCurrentApiDomain()}/openApi/spot/v2/server/time`, { timeout: 10000 });
+    if (response.data.code === 0 && response.data.data && response.data.data.serverTime) {
+      health.serverTime = true;
+      console.log('✅ [DIAGNOSIS] Серверное время: OK');
+    } else {
+      console.error('❌ [DIAGNOSIS] Серверное время: FAILED');
+    }
+  } catch (error) {
+    console.error('❌ [DIAGNOSIS] Ошибка серверного времени:', error.message);
+  }
+
+  // 2. Проверка баланса
+  try {
+    const timestamp = Date.now();
+    const params = { timestamp, recvWindow: 5000 };
+    const signature = signBingXRequest(params);
+    const url = `${getCurrentApiDomain()}/openApi/spot/v2/account/balance?timestamp=${timestamp}&recvWindow=5000&signature=${signature}`;
+    const response = await axios.get(url, { headers: { 'X-BX-APIKEY': BINGX_API_KEY }, timeout: 10000 });
+    if (response.data.code === 0 && Array.isArray(response.data.data.balances)) {
+      health.balance = true;
+      console.log('✅ [DIAGNOSIS] Баланс: OK');
+    } else {
+      console.error('❌ [DIAGNOSIS] Баланс: FAILED');
+    }
+  } catch (error) {
+    console.error('❌ [DIAGNOSIS] Ошибка баланса:', error.message);
+  }
+
+  // 3. Проверка цен
+  try {
+    const serverTime = await getBingXServerTime();
+    const params = { symbol: 'BTC-USDT', timestamp: serverTime, recvWindow: 5000 };
+    const signature = signBingXRequest(params);
+    const url = `${getCurrentApiDomain()}/openApi/spot/v2/market/ticker?symbol=${params.symbol}&timestamp=${params.timestamp}&recvWindow=5000&signature=${signature}`;
+    const response = await axios.get(url, { headers: { 'X-BX-APIKEY': BINGX_API_KEY }, timeout: 10000 });
+    if (response.data.code === 0 && response.data.data && response.data.data.price) {
+      health.prices = true;
+      console.log('✅ [DIAGNOSIS] Цены: OK');
+    } else {
+      console.error('❌ [DIAGNOSIS] Цены: FAILED');
+    }
+  } catch (error) {
+    console.error('❌ [DIAGNOSIS] Ошибка цен:', error.message);
+  }
+
+  globalState.apiHealth = health;
+  return health;
 }
 
 // ==========================
@@ -554,7 +625,7 @@ const createIndexHtml = () => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Философ Рынка — Торговый Бот v8.0</title>
+    <title>Философ Рынка — Торговый Бот v9.0</title>
     <style>
         :root {
             --primary: #3498db;
@@ -917,7 +988,7 @@ const createIndexHtml = () => {
     <button class="logout-btn" onclick="logout()">Выйти</button>
     <div class="container">
         <header>
-            <h1>Философ Рынка — Торговый Бот v8.0</h1>
+            <h1>Философ Рынка — Торговый Бот v9.0</h1>
             <p class="subtitle">Система принятия решений на основе фундаментального и технического анализа</p>
         </header>
         <div class="dashboard">
@@ -1057,7 +1128,7 @@ const createIndexHtml = () => {
         }
 
         function setRiskLevel(level) {
-            console.log(`[UI] Пользователь нажал кнопку: Установить уровень риска (${level})`);
+            console.log('[UI] Пользователь нажал кнопку: Установить уровень риска (' + level + ')');
             fetch('/set-risk-level', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1066,7 +1137,7 @@ const createIndexHtml = () => {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    console.log(`[UI] Уровень риска успешно установлен: ${level}`);
+                    console.log('[UI] Уровень риска успешно установлен: ' + level);
                     updateUI();
                 }
             });
@@ -1286,7 +1357,7 @@ app.get('/login', (req, res) => {
     <body>
       <div class="login-form">
         <div class="logo">Философ Рынка</div>
-        <h2>Торговый Бот v8.0</h2>
+        <h2>Торговый Бот v9.0</h2>
         <form id="loginForm">
           <input type="password" name="password" placeholder="Введите пароль" required>
           <button type="submit">Войти в систему</button>
@@ -1367,7 +1438,8 @@ app.get('/api/status', (req, res) => {
     openPositions: openPositions,
     history: globalState.history,
     currentPrices: globalState.currentPrices,
-    lastAnalysis: globalState.lastAnalysis || []
+    lastAnalysis: globalState.lastAnalysis || [],
+    apiHealth: globalState.apiHealth
   });
 });
 
@@ -1375,10 +1447,13 @@ app.get('/api/status', (req, res) => {
 // ГЛАВНАЯ ФУНКЦИЯ — ЦИКЛ БОТА
 // ==========================
 (async () => {
-  console.log('🤖 [БОТ] ЗАПУСК ТОРГОВОГО БОТА v8.0 — ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ И РАБОЧАЯ ВЕРСИЯ');
+  console.log('🤖 [БОТ] ЗАПУСК ТОРГОВОГО БОТА v9.0 — ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ И РАБОЧАЯ ВЕРСИЯ');
   console.log('🔑 [БОТ] API-ключи: ЗАДАНЫ');
   console.log('🔐 [БОТ] Секретный ключ: ЗАДАН');
   console.log('✅ [БОТ] Проверка доступных монет на BingX...');
+
+  // Запускаем самодиагностику
+  await runApiSelfDiagnosis();
 
   // Проверяем, какие монеты доступны
   for (const coin of [...globalState.watchlist]) {
@@ -1490,95 +1565,4 @@ app.get('/api/status', (req, res) => {
         ? (globalState.stats.profitableTrades / globalState.stats.totalTrades) * 100
         : 0;
 
-      if (Date.now() % 60000 < 10000) {
-        console.log(`
-💰 [БАЛАНС] Баланс: $${(globalState.isRealMode ? globalState.realBalance : globalState.balance)?.toFixed(2) || '...'}`);
-      }
-
-      // Для скальпинга — частота анализа 10 секунд
-      const delay = globalState.tradeMode === 'scalping' ? 10000 : 60000;
-      console.log(`💤 [БОТ] Ждём ${delay / 1000} секунд...`);
-      await new Promise(r => setTimeout(r, delay));
-
-    } catch (error) {
-      console.error('💥 [БОТ] КРИТИЧЕСКАЯ ОШИБКА В ЦИКЛЕ:', error.message);
-      if (error.response?.status === 403 || error.response?.status === 429) {
-        switchToNextApiDomain();
-      }
-      await new Promise(r => setTimeout(r, 60000));
-    }
-  }
-})();
-
-// ==========================
-// ФУНКЦИЯ: Принудительное обновление баланса
-// ==========================
-async function forceUpdateRealBalance() {
-  console.log('🔄 [БАЛАНС] Принудительное обновление...');
-  const balance = await getBingXRealBalance();
-  if (balance !== null) {
-    globalState.realBalance = balance;
-    console.log(`✅ [БАЛАНС] Обновлён: $${balance.toFixed(2)}`);
-  }
-  return balance;
-}
-
-// ==========================
-// ФУНКЦИЯ: Переключение режима
-// ==========================
-function toggleMode() {
-  globalState.isRealMode = !globalState.isRealMode;
-  console.log(`🔄 [РЕЖИМ] Переключён на: ${globalState.isRealMode ? 'РЕАЛЬНЫЙ' : 'ДЕМО'}`);
-  if (globalState.isRealMode) forceUpdateRealBalance();
-  return globalState.isRealMode;
-}
-
-// ==========================
-// ФУНКЦИЯ: Переключение торгового режима
-// ==========================
-function toggleTradeMode() {
-  const modes = ['scalping', 'adaptive'];
-  const currentIndex = modes.indexOf(globalState.tradeMode);
-  const nextIndex = (currentIndex + 1) % modes.length;
-  globalState.tradeMode = modes[nextIndex];
-  console.log(`⚡ [РЕЖИМ] Торговый режим переключён на: ${globalState.tradeMode}`);
-  return globalState.tradeMode;
-}
-
-// ==========================
-// ФУНКЦИЯ: Установка уровня риска
-// ==========================
-function setRiskLevel(level) {
-  globalState.riskLevel = level;
-  switch(level) {
-    case 'recommended':
-      globalState.maxRiskPerTrade = 0.01;
-      globalState.maxLeverage = 3;
-      console.log('📉 [РИСК] Установлен СТАНДАРТНЫЙ уровень риска: 1%, плечо 3x');
-      break;
-    case 'medium':
-      globalState.maxRiskPerTrade = 0.02;
-      globalState.maxLeverage = 5;
-      console.log('⚖️ [РИСК] Установлен СРЕДНИЙ уровень риска: 2%, плечо 5x');
-      break;
-    case 'high':
-      globalState.maxRiskPerTrade = 0.05;
-      globalState.maxLeverage = 10;
-      console.log('🚀 [РИСК] Установлен ВЫСОКИЙ уровень риска: 5%, плечо 10x');
-      break;
-  }
-  return globalState.riskLevel;
-}
-
-// ==========================
-// ЗАПУСК СЕРВЕРА
-// ==========================
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 [СЕРВЕР] Сервер запущен на порту ${PORT}`);
-  console.log(`🌐 [СЕРВЕР] Доступ к интерфейсу: http://localhost:${PORT}`);
-  console.log(`🔐 [СЕРВЕР] Пароль для входа: ${APP_PASSWORD}`);
-  console.log('✅ [СЕРВЕР] ВАЖНО: Для работы бота нужно установить переменные окружения:');
-  console.log('   - BINGX_API_KEY');
-  console.log('   - BINGX_SECRET_KEY');
-  console.log('   - APP_PASSWORD (по желанию)');
-});
+      if (Date.now() % 600
