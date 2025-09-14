@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Философ Рынка — Торговый Бот v5.1</title>
+    <title>Философ Рынка — Торговый Бот v6.0</title>
     <style>
         :root {
             --primary: #3498db;
@@ -335,34 +335,35 @@
     <button class="logout-btn" onclick="logout()">Выйти</button>
     <div class="container">
         <header>
-            <h1>Философ Рынка — Торговый Бот v5.1</h1>
+            <h1>Философ Рынка — Торговый Бот v6.0</h1>
             <p class="subtitle">Система принятия решений на основе фундаментального и технического анализа</p>
         </header>
         <div class="dashboard">
             <div class="card">
                 <div class="card-title">Текущий баланс</div>
-                <div class="card-value" id="balance">$100.00</div>
+                <div class="card-value" id="balance">$7.11</div>
                 <div class="card-subtitle">
-                    <span id="balanceMode">Демо-баланс</span>
-                    <span class="status-badge" id="modeBadge">ДЕМО</span>
+                    <span id="balanceMode">Реальный баланс</span>
+                    <span class="status-badge" id="modeBadge">РЕАЛ</span>
                 </div>
             </div>
             <div class="card">
                 <div class="card-title">Режим торговли</div>
-                <div class="card-value" id="tradeMode">adaptive</div>
+                <div class="card-value" id="tradeMode">scalping</div>
                 <div class="card-subtitle">Текущая стратегия</div>
             </div>
             <div class="card">
                 <div class="card-title">Уровень риска</div>
-                <div class="card-value" id="riskLevel">recommended</div>
-                <div class="card-subtitle">Макс. риск: 1.0%</div>
+                <div class="card-value" id="riskLevel">high</div>
+                <div class="card-subtitle">Макс. риск: 5%</div>
             </div>
             <div class="card">
                 <div class="card-title">Индекс страха</div>
-                <div class="card-value" id="fearIndex">50</div>
+                <div class="card-value" id="fearIndex">55</div>
                 <div class="card-subtitle">Настроения рынка</div>
             </div>
         </div>
+
         <h2 class="section-header">Статистика торговли</h2>
         <div class="dashboard">
             <div class="card">
@@ -386,6 +387,7 @@
                 <div class="card-subtitle">Win Rate</div>
             </div>
         </div>
+
         <h2 class="section-header">Открытые позиции</h2>
         <div class="positions-table">
             <table id="positionsTable">
@@ -407,6 +409,7 @@
                 </tbody>
             </table>
         </div>
+
         <h2 class="section-header">Последние сделки</h2>
         <div class="history-table">
             <table>
@@ -428,22 +431,25 @@
                 </tbody>
             </table>
         </div>
+
         <h2 class="section-header">Лог философского анализа</h2>
         <div class="analysis-log" id="analysisLog">
             <div class="log-entry">
-                <div class="log-time">[12:00:00]</div>
+                <div class="log-time">[00:00:00]</div>
                 <div><span class="log-coin">Бот запущен</span>: Ожидание данных с BingX API...</div>
             </div>
         </div>
+
         <h2 class="section-header">Управление капиталом</h2>
         <div class="controls">
             <button class="btn btn-primary" onclick="toggleMode()">🔄 Переключить режим (ДЕМО/РЕАЛ)</button>
             <button class="btn btn-primary" onclick="toggleTradeMode()">⚡ Сменить стратегию</button>
-            <button class="btn btn-success" onclick="setRiskLevel('recommended')">📉 Рекомендуемый риск</button>
+            <button class="btn btn-success" onclick="setRiskLevel('recommended')">📉 Стандартный риск</button>
             <button class="btn btn-warning" onclick="setRiskLevel('medium')">⚖️ Средний риск</button>
             <button class="btn btn-danger" onclick="setRiskLevel('high')">🚀 Высокий риск</button>
         </div>
     </div>
+
     <script>
         function toggleMode() {
             fetch('/toggle-mode', { method: 'POST' })
@@ -454,6 +460,7 @@
                     }
                 });
         }
+
         function toggleTradeMode() {
             fetch('/toggle-trade-mode', { method: 'POST' })
                 .then(response => response.json())
@@ -463,6 +470,7 @@
                     }
                 });
         }
+
         function setRiskLevel(level) {
             fetch('/set-risk-level', { 
                 method: 'POST',
@@ -476,13 +484,14 @@
                 }
             });
         }
+
         function logout() {
             fetch('/logout', { method: 'GET' })
                 .then(() => {
                     window.location.href = '/login';
                 });
         }
-        // Обновляем интерфейс данными из API
+
         function updateUI() {
             fetch('/api/status')
                 .then(response => response.json())
@@ -495,14 +504,25 @@
                     document.getElementById('balanceMode').textContent = balanceModeText;
                     document.getElementById('modeBadge').textContent = modeBadgeText;
                     document.getElementById('modeBadge').className = 'status-badge ' + (data.isRealMode ? 'status-real' : 'status-demo');
+
                     // Статистика
                     document.getElementById('tradeMode').textContent = data.tradeMode;
                     document.getElementById('riskLevel').textContent = data.riskLevel;
+
+                    // Уровень риска — подпись
+                    let riskLabel = '';
+                    if (data.riskLevel === 'recommended') riskLabel = 'Макс. риск: 1%';
+                    else if (data.riskLevel === 'medium') riskLabel = 'Макс. риск: 2%';
+                    else if (data.riskLevel === 'high') riskLabel = 'Макс. риск: 5%';
+                    document.querySelector('.card:nth-child(3) .card-subtitle').textContent = riskLabel;
+
                     document.getElementById('fearIndex').textContent = data.fearIndex;
+
                     document.getElementById('totalTrades').textContent = data.stats.totalTrades;
                     document.getElementById('profitableTrades').textContent = data.stats.profitableTrades;
                     document.getElementById('losingTrades').textContent = data.stats.losingTrades;
                     document.getElementById('winRate').textContent = data.stats.winRate.toFixed(1) + '%';
+
                     // Открытые позиции
                     const positionsBody = document.getElementById('positionsBody');
                     if (data.openPositions && data.openPositions.length > 0) {
@@ -525,6 +545,7 @@
                     } else {
                         positionsBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #95a5a6;">Нет открытых позиций</td></tr>';
                     }
+
                     // История сделок
                     const historyBody = document.getElementById('historyBody');
                     if (data.history && data.history.length > 0) {
@@ -543,10 +564,10 @@
                     } else {
                         historyBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #95a5a6;">Нет истории сделок</td></tr>';
                     }
+
                     // Лог анализа
                     const analysisLog = document.getElementById('analysisLog');
                     if (data.lastAnalysis && data.lastAnalysis.length > 0) {
-                        // Очищаем старые записи, оставляем только последние 5
                         analysisLog.innerHTML = '';
                         data.lastAnalysis.slice(-5).forEach(analysis => {
                             const logEntry = document.createElement('div');
@@ -563,7 +584,6 @@
                             analysisLog.insertBefore(logEntry, analysisLog.firstChild);
                         });
                     } else {
-                        // Если нет анализа, показываем "ожидание сигнала"
                         if (analysisLog.children.length === 0) {
                             const logEntry = document.createElement('div');
                             logEntry.className = 'log-entry';
@@ -572,13 +592,14 @@
                             analysisLog.appendChild(logEntry);
                         }
                     }
+
                     // Добавляем уведомление о доступности цен
                     const pricesAvailable = data.currentPrices && Object.keys(data.currentPrices).length > 0;
                     if (!pricesAvailable && analysisLog.children.length === 0) {
                         const logEntry = document.createElement('div');
                         logEntry.className = 'log-entry';
                         logEntry.innerHTML = '<div class="log-time">[' + new Date().toLocaleTimeString() + ']</div>' +
-                            '<div><span class="log-coin">⚠️ Внимание</span>: Не удалось получить цены с BingX. Проверьте символы и ключи API.</div>';
+                            '<div><span class="log-coin">⚠️ Внимание</span>: Не удалось получить цены с BingX. Проверьте ключи API.</div>';
                         analysisLog.appendChild(logEntry);
                     }
                 })
@@ -592,11 +613,9 @@
                     analysisLog.appendChild(logEntry);
                 });
         }
-        // Запускаем обновление сразу при загрузке
+
         updateUI();
-        // Обновляем каждые 15 секунд
-        setInterval(updateUI, 15000);
-        // Обновляем при каждом изменении вкладки
+        setInterval(updateUI, 10000); // Обновление каждые 10 секунд
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 updateUI();
