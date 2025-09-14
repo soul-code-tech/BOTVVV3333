@@ -8,96 +8,72 @@ import cors from 'cors';
 
 dotenv.config();
 
-// Импортируем модули бота
 import { getTickerPrice, getKlines, createOrder, getAccountInfo, getOpenOrders } from './bingxApi.js';
 import { generateTradingSignal } from './technicalAnalysis.js';
-import { updateBotSettings, executeTradingLogic, getBotStatus } from './bot.js';
+import { updateBotSettings, executeTradingLogic, getBotStatus, startMultiPairAnalysis } from './bot.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 10000; // Render по умолчанию использует 10000
+const PORT = process.env.PORT || 10000;
 
-// Middleware
-app.use(helmet({
-    contentSecurityPolicy: false,
-}));
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Простая аутентификация
-const WEB_PASSWORD = process.env.WEB_INTERFACE_PASSWORD;
+const WEB_PASSWORD = process.env.WEB_INTERFACE_PASSWORD || 'admin123';
+console.log(`🔒 Пароль интерфейса: ${WEB_PASSWORD}`);
 
-if (!WEB_PASSWORD) {
-    console.warn("⚠️  WEB_INTERFACE_PASSWORD не задан. Установите его в Render Environment.");
-}
-
-// Middleware для аутентификации
+// Middleware аутентификации
 app.use('/dashboard', (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({ error: 'Требуется аутентификация', code: 401 });
-    }
-    const token = authHeader.split(' ')[1];
-    if (token !== WEB_PASSWORD) {
-        return res.status(403).json({ error: 'Неверный пароль', code: 403 });
-    }
+    const auth = req.headers.authorization;
+    if (!auth) return res.status(401).json({ error: 'Требуется пароль' });
+    const token = auth.split(' ')[1];
+    if (token !== WEB_PASSWORD) return res.status(403).json({ error: 'Неверный пароль' });
     next();
 });
 
-// Роут для получения состояния бота
+// API: статус бота
 app.get('/api/bot/status', async (req, res) => {
     try {
-        const ticker = await getTickerPrice(botSettings.tradingPair);
-        const account = await getAccountInfo();
-        const openOrders = await getOpenOrders(botSettings.tradingPair);
-
         const status = getBotStatus();
+        const ticker = await getTickerPrice(status.settings.tradingPair);
         status.currentPrice = ticker.price || "N/A";
-        status.availableBalance = account.balances?.find(b => b.asset === botSettings.tradingPair.split('-')[1])?.free || "0";
+        const account = await getAccountInfo();
+        const quoteAsset = status.settings.tradingPair.split('-')[1];
+        status.availableBalance = account.balances?.find(b => b.asset === quoteAsset)?.free || "0";
+        const openOrders = await getOpenOrders(status.settings.tradingPair);
         status.openOrdersCount = Array.isArray(openOrders) ? openOrders.length : 0;
-
-        res.json({
-            success: true,
-             status
-        });
-    } catch (error) {
-        console.error("Ошибка статуса:", error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message,
-            code: error.response?.data?.code || 500
-        });
-    }
-});
-
-// Сохранение настроек
-app.post('/api/bot/settings', async (req, res) => {
-    try {
-        const newSettings = req.body;
-        if (!newSettings.tradingPair || !newSettings.strategy) {
-            return res.status(400).json({ success: false, error: "Укажите пару и стратегию" });
-        }
-        updateBotSettings(newSettings);
-        res.json({ success: true, message: "Настройки сохранены", settings: newSettings });
+        res.json({ success: true,  status });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// Ручной запуск торговли
+// API: сохранить настройки
+app.post('/api/bot/settings', (req, res) => {
+    try {
+        const settings = req.body;
+        updateBotSettings(settings);
+        res.json({ success: true, message: "Настройки сохранены" });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// API: торговать сейчас
 app.post('/api/bot/trade-now', async (req, res) => {
     try {
         await executeTradingLogic();
-        res.json({ success: true, message: "Торговля запущена", timestamp: new Date().toISOString() });
+        res.json({ success: true, message: "Анализ запущен" });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// Перенаправление корня на /dashboard
+// 🚨 ВАЖНО: Перенаправляем корень на /dashboard
 app.get('/', (req, res) => {
     res.redirect('/dashboard');
 });
@@ -107,9 +83,9 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// Health check для Render
+// Health check
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'OK', timestamp: Date.now() });
+    res.json({ status: 'OK', time: new Date().toISOString() });
 });
 
 // Обработка 404
@@ -117,15 +93,11 @@ app.use('*', (req, res) => {
     res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// Глобальный обработчик ошибок
-app.use((error, req, res, next) => {
-    console.error('Ошибка сервера:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
-});
-
-// Запуск сервера на 0.0.0.0 и PORT
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Сервер запущен на порту ${PORT}`);
-    console.log(`🌐 Интерфейс: https://botvvv3333-2.onrender.com/dashboard`);
-    console.log(`🔒 Пароль: ${WEB_PASSWORD || 'не задан'}`);
+    console.log(`🌐 Интерфейс: https://botvvv3333-2.onrender.com`);
+    console.log(`📊 Health check: https://botvvv3333-2.onrender.com/health`);
+
+    // Запускаем анализ всех пар
+    startMultiPairAnalysis();
 });
