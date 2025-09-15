@@ -16,9 +16,18 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ✅ Эндпоинт для получения пароля из Environment Variables
+app.get('/api/config', (req, res) => {
+    res.json({
+        success: true,
+         {
+            webPassword: process.env.WEB_INTERFACE_PASSWORD || 'admin123'
+        }
+    });
+});
 
 // Health check
 app.get('/health', (req, res) => {
@@ -47,7 +56,7 @@ app.get('/api/bot/status', async (req, res) => {
 app.post('/api/bot/settings', (req, res) => {
     try {
         const settings = req.body;
-        console.log("[API] Получены настройки:", settings);
+        console.log("[API] 🔄 Получены настройки:", settings);
         updateBotSettings(settings);
         res.json({ success: true, message: "Настройки сохранены" });
     } catch (error) {
@@ -59,7 +68,7 @@ app.post('/api/bot/settings', (req, res) => {
 // API: торговать сейчас
 app.post('/api/bot/trade-now', async (req, res) => {
     try {
-        console.log("[API] Запущен ручной анализ");
+        console.log("[API] ⚡ Запущен ручной анализ");
         await executeTradingLogic();
         res.json({ success: true, message: "Анализ запущен", timestamp: new Date().toISOString() });
     } catch (error) {
@@ -68,12 +77,11 @@ app.post('/api/bot/trade-now', async (req, res) => {
     }
 });
 
-// Обработка корневого пути — показываем dashboard
+// Роуты для интерфейса
 app.get('/', (req, res) => {
     res.redirect('/dashboard');
 });
 
-// Панель управления — отдаём HTML
 app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
@@ -92,8 +100,8 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Сервер запущен на порту ${PORT}`);
     console.log(`🌐 Интерфейс: https://botvvv3333-2.onrender.com/dashboard`);
     console.log(`📊 Health check: https://botvvv3333-2.onrender.com/health`);
-    console.log(`⏰ Серверное время: ${new Date().toISOString()}`);
+    console.log(`🔒 Пароль берётся из WEB_INTERFACE_PASSWORD`);
 
-    // Запускаем анализ всех пар
+    // Запускаем анализ
     startMultiPairAnalysis();
 });
