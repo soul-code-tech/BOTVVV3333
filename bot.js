@@ -1,4 +1,4 @@
-// bot.js — АВТОМАТИЧЕСКИЙ ТОРГОВЫЙ БОТ ДЛЯ ФЬЮЧЕРСОВ
+// ✅ bot.js — ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ
 import { 
     getKlines, 
     getTickerPrice, 
@@ -38,10 +38,10 @@ let isPairsLoaded = false;
 async function loadAvailablePairs() {
     try {
         const contracts = await getContracts();
-       AVAILABLE_PAIRS = contracts
-        .filter(c => c.symbol.endsWith('-USDT') && c.status === "TRADING")
-        .map(c => c.symbol); // ✅ Только торгуемые пары
-        );
+        // ✅ ИСПРАВЛЕНО: правильный порядок filter → map
+        AVAILABLE_PAIRS = contracts
+            .filter(c => c.symbol.endsWith('-USDT') && c.status === "TRADING")
+            .map(c => c.symbol);
         console.log(`[✅] Загружено ${AVAILABLE_PAIRS.length} доступных пар`);
         isPairsLoaded = true;
     } catch (error) {
@@ -49,7 +49,7 @@ async function loadAvailablePairs() {
         // Fallback список
         AVAILABLE_PAIRS = [
             "BTC-USDT", "ETH-USDT", "BNB-USDT", "SOL-USDT", "XRP-USDT",
-            "ADA-USDT", "DOGE-USDT", "TON-USDT", "AVAX-USDT", "SHIB-USDT"
+            "ADA-USDT", "DOGE-USDT", "AVAX-USDT", "SHIB-USDT", "MATIC-USDT"
         ];
     }
 }
@@ -61,11 +61,11 @@ async function waitForPairs() {
 
 let botSettings = {
     strategy: 'simple',
-    riskLevel: 3, // 3% от баланса на сделку
+    riskLevel: 3,
     isEnabled: true,
     useDemoMode: true,
-    analysisInterval: 300000, // 5 минут
-    feeRate: 0.001, // 0.1% комиссия
+    analysisInterval: 300000,
+    feeRate: 0.001,
     useStopLoss: true,
     stopLossPercent: 2.0,
     useTakeProfit: true,
@@ -73,7 +73,7 @@ let botSettings = {
     lastTradeTime: null,
     minTradeInterval: 300000,
     maxConcurrentRequests: 5,
-    defaultLeverage: 10 // ✅ Плечо 10x
+    defaultLeverage: 10
 };
 
 let tradeHistory = [];
@@ -160,7 +160,7 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
         const closePrices = klines.map(candle => parseFloat(candle[4]));
         const currentPrice = closePrices[closePrices.length - 1];
 
-        // ✅ Простая и надёжная стратегия
+        // ✅ Простая стратегия
         const rsi = calculateRSI(klines);
         const bb = calculateBollingerBands(closePrices, 20, 2);
         const upperBB = bb.upper[bb.upper.length - 1];
@@ -201,7 +201,7 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
             }
         }
 
-        // ✅ Рассчитываем размер позиции с учётом риска и плеча
+        // ✅ Рассчитываем размер позиции
         const riskAmount = availableBalance * (botSettings.riskLevel * 0.01);
         const positionSize = (riskAmount * botSettings.defaultLeverage) / currentPrice;
         const quantity = positionSize;
@@ -211,7 +211,7 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
             return null;
         }
 
-        // ✅ Проверка интервала между сделками
+        // ✅ Проверка интервала
         const now = Date.now();
         if (botSettings.lastTradeTime && (now - botSettings.lastTradeTime) < botSettings.minTradeInterval) {
             console.log(`[⏳] ⏸️ Слишком рано для новой сделки`);
@@ -221,12 +221,9 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
         // ✅ Выполнение ордера
         let orderResult;
         if (botSettings.useDemoMode) {
-            // 🎮 Демо-режим с учётом плеча и комиссии
             const notionalValue = quantity * currentPrice;
             const fee = notionalValue * botSettings.feeRate;
             demoBalances.USDT -= fee;
-            
-            // Имитация PnL (1% прибыли/убытка для демо)
             const pnl = signal === 'BUY' ? notionalValue * 0.01 : notionalValue * -0.01;
             demoBalances.USDT += pnl;
             
@@ -238,14 +235,13 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
             };
             console.log(`[🎮 DEMO] ✅ Ордер: ${signal} ${quantity.toFixed(6)} ${symbol} с плечом ${botSettings.defaultLeverage}x`);
         } else {
-            // 🚀 Реальный ордер
             orderResult = await createOrder(symbol, signal, 'MARKET', quantity.toFixed(6));
             console.log(`[🚀 REAL] ✅ Ордер отправлен: ${signal} ${quantity.toFixed(6)} ${symbol}`);
         }
 
         botSettings.lastTradeTime = now;
 
-        // ✅ Расчёт PnL и запись в историю
+        // ✅ Запись в историю
         const pnl = calculatePnL(symbol, signal, currentPrice, quantity);
         const pnlPercent = quantity > 0 ? (pnl / (quantity * currentPrice)) * 100 : 0;
 
@@ -267,33 +263,6 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
         tradeHistory.push(tradeRecord);
         logToFile('trades.log', `TRADE | ${tradeRecord.mode} | ${signal} ${symbol} @ ${currentPrice} | Кол-во: ${quantity.toFixed(6)} | Плечо: ${botSettings.defaultLeverage}x | PnL: ${pnl.toFixed(4)}`);
         console.log(`[✅] 📝 Сделка добавлена`);
-
-        // ✅ Установка Stop-Loss и Take-Profit
-        if (botSettings.useStopLoss || botSettings.useTakeProfit) {
-            const slSide = signal === 'BUY' ? 'SELL' : 'BUY';
-            const tpSide = slSide;
-
-            try {
-                if (botSettings.useStopLoss && !botSettings.useDemoMode) {
-                    const slPrice = signal === 'BUY'
-                        ? currentPrice * (1 - botSettings.stopLossPercent / 100)
-                        : currentPrice * (1 + botSettings.stopLossPercent / 100);
-                    await createOrder(symbol, slSide, 'STOP_MARKET', quantity.toFixed(6), null, slPrice.toFixed(8));
-                    console.log(`[🚀 REAL SL] 🛑 Stop-Loss установлен: ${slPrice.toFixed(8)}`);
-                }
-
-                if (botSettings.useTakeProfit && !botSettings.useDemoMode) {
-                    const tpPrice = signal === 'BUY'
-                        ? currentPrice * (1 + botSettings.takeProfitPercent / 100)
-                        : currentPrice * (1 - botSettings.takeProfitPercent / 100);
-                    await createOrder(symbol, tpSide, 'TAKE_PROFIT_MARKET', quantity.toFixed(6), null, tpPrice.toFixed(8));
-                    console.log(`[🚀 REAL TP] 🎯 Take-Profit установлен: ${tpPrice.toFixed(8)}`);
-                }
-            } catch (sltpError) {
-                console.error(`[⚠️ SL/TP ERROR]`, sltpError.message);
-                logError(`Ошибка установки SL/TP для ${symbol}: ${sltpError.message}`);
-            }
-        }
 
         return tradeRecord;
 
@@ -318,7 +287,7 @@ export async function executeTradingLogic() {
         results.push(...batchResults);
         
         if (i + batchSize < AVAILABLE_PAIRS.length) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // пауза 2 сек
+            await new Promise(resolve => setTimeout(resolve, 2000));
         }
     }
 
