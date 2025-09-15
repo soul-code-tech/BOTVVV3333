@@ -201,3 +201,7 @@ export async function getServerTime() {
     const response = await callBingxApi(`/openApi/swap/v2/server/time`, 'GET', {});
     return response.serverTime;
 }
+// ✅ Получить список доступных контрактов (торговых пар)
+export async function getContracts() {
+    return await callBingxApi(`/openApi/swap/v2/quote/contracts`, 'GET', {});
+}
