@@ -15,6 +15,7 @@
         button:hover { background: #0c7cd5; }
         .status-card { background: #fafafa; padding: 15px; border-radius: 8px; margin: 15px 0; }
         .hidden { display: none; }
+        .error { color: red; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -24,10 +25,10 @@
             <h3 style="text-align:center;">🔒 Введите пароль для доступа</h3>
             <input type="password" id="passwordInput" placeholder="Пароль" autocomplete="current-password">
             <button onclick="checkPassword()">Войти</button>
-            <p id="errorMessage" style="color: red; display: none;">Неверный пароль</p>
+            <p id="errorMessage" class="error hidden">Неверный пароль</p>
         </div>
 
-        <!-- Основной интерфейс (скрыт до ввода пароля) -->
+        <!-- Основной интерфейс -->
         <div id="mainInterface" class="hidden">
             <h1>🤖 Бот BingX Spot</h1>
             
@@ -44,7 +45,7 @@
                     <option value="ADA-USDT">Cardano (ADA)</option>
                     <option value="DOT-USDT">Polkadot (DOT)</option>
                     <option value="MATIC-USDT">Polygon (MATIC)</option>
-                    <!-- Добавьте остальные пары по желанию -->
+                    <!-- Добавьте остальные пары -->
                 </select>
             </div>
 
@@ -76,8 +77,8 @@
     </div>
 
     <script>
-        // Пароль из переменных окружения (будет подставлен на сервере)
-        const CORRECT_PASSWORD = "Batas41725"; // Замените на ваш реальный пароль
+        // Замените на ваш реальный пароль из Render Environment Variables
+        const CORRECT_PASSWORD = "Batas41725";
 
         function checkPassword() {
             const input = document.getElementById('passwordInput').value;
@@ -89,7 +90,7 @@
                 loadStatus();
                 setInterval(loadStatus, 10000);
             } else {
-                error.style.display = 'block';
+                error.classList.remove('hidden');
             }
         }
 
