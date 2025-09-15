@@ -61,9 +61,9 @@ app.get('/api/bot/status', async (req, res) => {
             if (account && account.balance !== undefined) {
                 availableBalance = `${parseFloat(account.balance).toFixed(2)} USDT`;
             }
-        } else {
-            availableBalance = `${status.demoBalances.USDT?.toFixed(2)} USDT`;
-        }
+         } else {
+    availableBalance = `${status.demoBalances.USDT?.toFixed(2)} USDT`;
+     }
         
         status.availableBalance = availableBalance;
         status.lastUpdate = new Date().toISOString();
