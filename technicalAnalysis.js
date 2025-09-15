@@ -51,6 +51,31 @@ export function calculateMACD(klines, fastPeriod = 12, slowPeriod = 26, signalPe
     else if (macdLine < signalLine && histogram < 0) action = 'SELL';
     return { macd: macdLine, signal: signalLine, histogram, action };
 }
+/**
+ * Рассчитывает экспоненциальную скользящую среднюю (EMA)
+ */
+export function calculateEMA(prices, period) {
+    if (!Array.isArray(prices) || prices.length < period) {
+        return 0;
+    }
+    const multiplier = 2 / (period + 1);
+    let ema = prices.slice(0, period).reduce((sum, price) => sum + price, 0) / period; // SMA как начальное значение
+    for (let i = period; i < prices.length; i++) {
+        ema = (prices[i] * multiplier) + (ema * (1 - multiplier));
+    }
+    return ema;
+}
+
+/**
+ * Рассчитывает простую скользящую среднюю (SMA)
+ */
+export function calculateSMA(prices, period) {
+    if (!Array.isArray(prices) || prices.length < period) {
+        return 0;
+    }
+    const slice = prices.slice(-period);
+    return slice.reduce((sum, price) => sum + price, 0) / period;
+}
 
 /**
  * Рассчитывает стохастический осциллятор
