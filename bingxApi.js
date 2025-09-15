@@ -1,4 +1,4 @@
-// ✅ bingxApi.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (работает с BingX Spot API)
+// ✅ bingxApi.js — МИНИМАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
 import CryptoJS from 'crypto-js';
 import axios from 'axios';
 import dotenv from 'dotenv';
@@ -16,7 +16,6 @@ if (!API_KEY || !SECRET_KEY) {
 
 function generateSignature(payload) {
     const timestamp = Date.now();
-    // Сортируем ключи — обязательно для Spot API
     const sortedKeys = Object.keys(payload).sort();
     let parameters = "";
 
@@ -27,34 +26,28 @@ function generateSignature(payload) {
     }
     parameters += `timestamp=${timestamp}`;
 
-    const signature = CryptoJS.HmacSHA256(parameters, SECRET_KEY).toString(CryptoJS.enc.Hex);
-    return { parameters, signature, timestamp };
+    return CryptoJS.HmacSHA256(parameters, SECRET_KEY).toString(CryptoJS.enc.Hex);
 }
 
 export async function callBingxApi(path, method = 'GET', payload = {}) {
     try {
-        const { parameters, signature } = generateSignature(payload);
+        const timestamp = Date.now();
+        const signature = generateSignature({ ...payload, timestamp });
         let url;
 
         if (method === 'GET') {
-            url = `${PROTOCOL}://${HOST}${path}?${parameters}&signature=${signature}`;
+            const params = new URLSearchParams({ ...payload, timestamp, signature });
+            url = `${PROTOCOL}://${HOST}${path}?${params.toString()}`;
         }
 
         const config = {
-            method: method,
-            url: url,
-            headers: {
-                'X-BX-APIKEY': API_KEY,
-            },
+            method,
+            url,
+            headers: { 'X-BX-APIKEY': API_KEY },
         };
 
-        // Для POST — передаём параметры в теле
         if (method !== 'GET') {
-            config.data = {
-                ...payload,
-                timestamp: Date.now(),
-                signature: signature
-            };
+            config.data = { ...payload, timestamp, signature };
         }
 
         const response = await axios(config);
@@ -70,36 +63,29 @@ export async function callBingxApi(path, method = 'GET', payload = {}) {
     }
 }
 
-// ✅ SPOT API — ПРАВИЛЬНЫЕ ЭНДПОИНТЫ И ФОРМАТ СИМВОЛА
+// ✅ SPOT API — ПРАВИЛЬНЫЕ ЭНДПОИНТЫ
 
-// 📈 Получить цену — Spot v1
 export async function getTickerPrice(symbol) {
-    // ✅ BingX Spot API ожидает символ с ДЕФИСОМ: BTC-USDT
+    // ✅ BingX Spot требует символ с ДЕФИСОМ: BTC-USDT
     return await callBingxApi(`/openApi/spot/v1/market/ticker`, 'GET', { symbol });
 }
 
-// 📊 Получить свечи — Spot v1
 export async function getKlines(symbol, interval, limit = 100) {
-    // ✅ Оставляем символ как есть — с дефисом
+    // ✅ Тот же формат символа
     return await callBingxApi(`/openApi/spot/v1/market/kline`, 'GET', { symbol, interval, limit });
 }
 
-// 💰 Получить баланс — Spot v1
 export async function getAccountInfo() {
     return await callBingxApi(`/openApi/spot/v1/account/balance`, 'GET', {});
 }
 
-// 🛒 Создать ордер — Spot v1
-export async function createOrder(symbol, side, type, quantity, price = null, stopPrice = null) {
-    // ✅ Оставляем символ с дефисом
+export async function createOrder(symbol, side, type, quantity, price = null) {
     const payload = {
-        symbol,
+        symbol, // ✅ с дефисом
         side: side.toUpperCase(),
         type: type.toUpperCase(),
         quantity: parseFloat(quantity).toFixed(8)
     };
     if (price) payload.price = parseFloat(price).toFixed(8);
-    if (stopPrice) payload.stopPrice = parseFloat(stopPrice).toFixed(8);
-
     return await callBingxApi(`/openApi/spot/v1/trade/order`, 'POST', payload);
 }
