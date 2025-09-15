@@ -1,4 +1,4 @@
-// ✅ bot.js — ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// ✅ bot.js — ИСПРАВЛЕННАЯ ВЕРСИЯ С Fallback
 import { 
     getKlines, 
     getTickerPrice, 
@@ -31,26 +31,46 @@ function logError(message) {
     logToFile('errors.log', `ERROR: ${message}`);
 }
 
+// ✅ Fallback список пар — всегда доступен
+const FALLBACK_PAIRS = [
+    "BTC-USDT", "ETH-USDT", "BNB-USDT", "SOL-USDT", "XRP-USDT",
+    "ADA-USDT", "DOGE-USDT", "AVAX-USDT", "MATIC-USDT", "TON-USDT"
+];
+
 // ✅ Получаем список доступных пар при старте
-let AVAILABLE_PAIRS = [];
+let AVAILABLE_PAIRS = [...FALLBACK_PAIRS]; // ✅ Начинаем с fallback
 let isPairsLoaded = false;
 
 async function loadAvailablePairs() {
     try {
         const contracts = await getContracts();
-        // ✅ ИСПРАВЛЕНО: правильный порядок filter → map
-        AVAILABLE_PAIRS = contracts
-            .filter(c => c.symbol.endsWith('-USDT') && c.status === "TRADING")
+        
+        if (!Array.isArray(contracts) || contracts.length === 0) {
+            throw new Error("Пустой ответ от API");
+        }
+
+        // ✅ Фильтруем только торгуемые USDT пары
+        const filteredPairs = contracts
+            .filter(c => 
+                c && 
+                c.symbol && 
+                c.symbol.endsWith('-USDT') && 
+                c.status === "TRADING"
+            )
             .map(c => c.symbol);
-        console.log(`[✅] Загружено ${AVAILABLE_PAIRS.length} доступных пар`);
+
+        if (filteredPairs.length > 0) {
+            AVAILABLE_PAIRS = filteredPairs;
+            console.log(`[✅] Загружено ${AVAILABLE_PAIRS.length} доступных пар`);
+        } else {
+            console.log('[⚠️] Нет подходящих пар, используем fallback');
+        }
+        
         isPairsLoaded = true;
     } catch (error) {
-        console.error('[❌] Ошибка загрузки пар:', error.message);
-        // Fallback список
-        AVAILABLE_PAIRS = [
-            "BTC-USDT", "ETH-USDT", "BNB-USDT", "SOL-USDT", "XRP-USDT",
-            "ADA-USDT", "DOGE-USDT", "AVAX-USDT", "SHIB-USDT", "MATIC-USDT"
-        ];
+        console.error('[⚠️] Ошибка загрузки пар, используем fallback:', error.message);
+        AVAILABLE_PAIRS = [...FALLBACK_PAIRS]; // ✅ Всегда есть fallback
+        isPairsLoaded = true;
     }
 }
 
@@ -163,8 +183,8 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
         // ✅ Простая стратегия
         const rsi = calculateRSI(klines);
         const bb = calculateBollingerBands(closePrices, 20, 2);
-        const upperBB = bb.upper[bb.upper.length - 1];
-        const lowerBB = bb.lower[bb.lower.length - 1];
+        const upperBB = bb.upper?.[bb.upper.length - 1] || 0;
+        const lowerBB = bb.lower?.[bb.lower.length - 1] || 0;
 
         let signal = 'NEUTRAL';
         if (rsi.rsi < 30 && currentPrice < lowerBB) signal = 'BUY';
@@ -295,7 +315,7 @@ export async function executeTradingLogic() {
 }
 
 export function startMultiPairAnalysis() {
-    loadAvailablePairs();
+    loadAvailablePairs(); // Загружаем пары при старте
     console.log(`[⏰] Автоматическая торговля каждые ${botSettings.analysisInterval / 60000} минут`);
     setInterval(executeTradingLogic, botSettings.analysisInterval);
 }
