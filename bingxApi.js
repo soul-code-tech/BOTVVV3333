@@ -1,4 +1,4 @@
-// bingxApi.js
+// bingxApi.js — ПОЛНОСТЬЮ ГОТОВЫЙ
 import CryptoJS from 'crypto-js';
 import axios from 'axios';
 import dotenv from 'dotenv';
@@ -51,13 +51,12 @@ export async function callBingxApi(path, method = 'GET', payload = {}) {
             headers: {
                 'X-BX-APIKEY': API_KEY,
             },
-            // ✅ ИСПРАВЛЕНО: Убрана лишняя скобка, правильный синтаксис
-            ...(method !== 'GET' && 
-                 {
+            ...(method !== 'GET' && {
+                data: {
                     ...payload,
                     signature: signature
                 }
-            )
+            })
         };
 
         const response = await axios(config);
@@ -73,27 +72,29 @@ export async function callBingxApi(path, method = 'GET', payload = {}) {
     }
 }
 
-// SPOT API функции
+// SPOT API функции — ИСПРАВЛЕНО НА SPOT!
 export async function getTickerPrice(symbol) {
-    return await callBingxApi(`/openApi/swap/v1/ticker/price`, 'GET', { symbol });
+    return await callBingxApi(`/openApi/spot/v1/ticker/price`, 'GET', { symbol });
 }
 
 export async function getKlines(symbol, interval, limit = 100) {
-    return await callBingxApi(`/openApi/swap/v3/quote/klines`, 'GET', { symbol, interval, limit });
+    return await callBingxApi(`/openApi/spot/v1/market/klines`, 'GET', { symbol, interval, limit });
 }
 
 export async function getAccountInfo() {
-    return await callBingxApi(`/openApi/swap/v2/user/balance`, 'GET', {});
+    return await callBingxApi(`/openApi/spot/v1/account/balance`, 'GET', {});
 }
 
-export async function createOrder(symbol, side, type, quantity, price = null) {
+export async function createOrder(symbol, side, type, quantity, price = null, stopPrice = null) {
     const payload = {
         symbol,
         side,
         type,
-        quantity,
+        quantity: parseFloat(quantity).toFixed(8),
         timestamp: Date.now()
     };
-    if (price) payload.price = price;
-    return await callBingxApi(`/openApi/swap/v2/trade/order`, 'POST', payload);
+    if (price) payload.price = parseFloat(price).toFixed(8);
+    if (stopPrice) payload.stopPrice = parseFloat(stopPrice).toFixed(8);
+
+    return await callBingxApi(`/openApi/spot/v1/trade/order`, 'POST', payload);
 }
