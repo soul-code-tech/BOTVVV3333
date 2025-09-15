@@ -1,6 +1,19 @@
 // bot.js
 import { getKlines, getTickerPrice, getAccountInfo, createOrder } from './bingxApi.js';
-import { generateTradingSignal, calculateBollingerBands, calculateRSI, calculateMACD, calculateStochastic } from './technicalAnalysis.js';
+import { 
+    generateTradingSignal, 
+    calculateBollingerBands, 
+    calculateRSI, 
+    calculateMACD, 
+    calculateStochastic,
+    calculateSMA,
+    calculateEMA,
+    detectCandlestickPatterns,
+    detectChartPatterns,
+    detectDivergence,
+    calculateVolumeProfile,
+    calculateMIDAS
+} from './technicalAnalysis.js';
 
 // Список 200+ криптовалют
 export const CRYPTO_PAIRS = [
@@ -33,19 +46,19 @@ export const CRYPTO_PAIRS = [
 ];
 
 let botSettings = {
-    strategy: 'combo',
-    riskLevel: 5, // 1-10
+    strategy: 'advanced',
+    riskLevel: 5,
     maxPositionSize: 100,
     isEnabled: true,
-    useDemoMode: true, // ✅ Демо-режим по умолчанию
-    analysisInterval: 300000, // 5 минут
-    feeRate: 0.001, // 0.1% комиссия
+    useDemoMode: true,
+    analysisInterval: 300000,
+    feeRate: 0.001,
     useStopLoss: true,
     stopLossPercent: 2.0,
     useTakeProfit: true,
     takeProfitPercent: 4.0,
     lastTradeTime: null,
-    minTradeInterval: 300000 // 5 минут
+    minTradeInterval: 300000
 };
 
 let tradeHistory = [];
@@ -106,33 +119,39 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
             }
         }
 
-        // Расширенный технический анализ
         const closePrices = klines.map(candle => parseFloat(candle[4]));
         const volumes = klines.map(candle => parseFloat(candle[5]));
+        const highs = klines.map(candle => parseFloat(candle[2]));
+        const lows = klines.map(candle => parseFloat(candle[3]));
         
         // Индикаторы
         const rsi = calculateRSI(klines);
         const macd = calculateMACD(klines);
         const stoch = calculateStochastic(klines);
         const bb = calculateBollingerBands(closePrices, 20, 2);
+        const sma20 = calculateSMA(closePrices, 20);
+        const ema12 = calculateEMA(closePrices, 12);
         const currentPrice = closePrices[closePrices.length - 1];
         const upperBB = bb.upper[bb.upper.length - 1];
         const lowerBB = bb.lower[bb.lower.length - 1];
+
+        // Расширенный анализ
+        const candlePatterns = detectCandlestickPatterns(klines);
+        const chartPatterns = detectChartPatterns(klines);
+        const divergence = detectDivergence(closePrices, rsi.rsi, volumes);
+        const volumeProfile = calculateVolumeProfile(klines, 10);
+        const midas = calculateMIDAS(closePrices, volumes);
 
         console.log(`[📊] 📈 RSI: ${rsi.rsi.toFixed(2)} (${rsi.signal})`);
         console.log(`[📊] 📉 MACD: ${macd.macd.toFixed(6)} | Signal: ${macd.signal.toFixed(6)} | Histogram: ${macd.histogram.toFixed(6)}`);
         console.log(`[📊] 📊 Stochastic: %K=${stoch.k.toFixed(2)} | %D=${stoch.d.toFixed(2)} (${stoch.signal})`);
         console.log(`[📊] 📊 Bollinger Bands: Цена=${currentPrice.toFixed(6)} | Верхняя=${upperBB.toFixed(6)} | Нижняя=${lowerBB.toFixed(6)}`);
-
-        // Анализ волатильности ("эффект бабочки")
-        const volatility = (upperBB - lowerBB) / currentPrice * 100;
-        console.log(`[🦋] 🦋 Эффект бабочки (волатильность): ${volatility.toFixed(2)}%`);
-
-        // Анализ объёма ("волновая теория")
-        const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
-        const currentVolume = volumes[volumes.length - 1];
-        const volumeRatio = currentVolume / avgVolume;
-        console.log(`[🌊] 🌊 Волновая теория (объём): текущий=${currentVolume.toFixed(0)} | средний=${avgVolume.toFixed(0)} | отношение=${volumeRatio.toFixed(2)}`);
+        console.log(`[📊] 📊 SMA(20): ${sma20.toFixed(6)} | EMA(12): ${ema12.toFixed(6)}`);
+        console.log(`[🕯️] 🕯️ Свечные паттерны: ${candlePatterns.join(', ') || 'нет'}`);
+        console.log(`[🎨] 🎨 Фигуры графика: ${chartPatterns.join(', ') || 'нет'}`);
+        console.log(`[🔄] 🔄 Дивергенция: ${divergence.type} (${divergence.strength.toFixed(2)})`);
+        console.log(`[📊] 📊 Объём профиль: ${volumeProfile.support.toFixed(6)} - ${volumeProfile.resistance.toFixed(6)}`);
+        console.log(`[🔮] 🔮 MIDAS: ${midas.support.toFixed(6)} - ${midas.resistance.toFixed(6)}`);
 
         // Генерация сигнала
         let signal = 'NEUTRAL';
@@ -144,30 +163,42 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
             confidence = 0.8;
             analysisReason = "Принудительная ежедневная сделка";
         } else {
-            // Комбинированная стратегия
             const signals = [];
 
-            // RSI
-            if (rsi.rsi < 30) signals.push({ type: 'RSI', signal: 'BUY', weight: 0.3 });
-            else if (rsi.rsi > 70) signals.push({ type: 'RSI', signal: 'SELL', weight: 0.3 });
+            // Технические индикаторы
+            if (rsi.rsi < 30) signals.push({ type: 'RSI', signal: 'BUY', weight: 0.2 });
+            else if (rsi.rsi > 70) signals.push({ type: 'RSI', signal: 'SELL', weight: 0.2 });
 
-            // MACD
-            if (macd.histogram > 0 && macd.macd > macd.signal) signals.push({ type: 'MACD', signal: 'BUY', weight: 0.25 });
-            else if (macd.histogram < 0 && macd.macd < macd.signal) signals.push({ type: 'MACD', signal: 'SELL', weight: 0.25 });
+            if (macd.histogram > 0 && macd.macd > macd.signal) signals.push({ type: 'MACD', signal: 'BUY', weight: 0.15 });
+            else if (macd.histogram < 0 && macd.macd < macd.signal) signals.push({ type: 'MACD', signal: 'SELL', weight: 0.15 });
 
-            // Stochastic
-            if (stoch.k < 20 && stoch.k > stoch.d) signals.push({ type: 'Stochastic', signal: 'BUY', weight: 0.25 });
-            else if (stoch.k > 80 && stoch.k < stoch.d) signals.push({ type: 'Stochastic', signal: 'SELL', weight: 0.25 });
+            if (stoch.k < 20 && stoch.k > stoch.d) signals.push({ type: 'Stochastic', signal: 'BUY', weight: 0.15 });
+            else if (stoch.k > 80 && stoch.k < stoch.d) signals.push({ type: 'Stochastic', signal: 'SELL', weight: 0.15 });
 
-            // Bollinger Bands
-            if (currentPrice < lowerBB) signals.push({ type: 'Bollinger', signal: 'BUY', weight: 0.2 });
-            else if (currentPrice > upperBB) signals.push({ type: 'Bollinger', signal: 'SELL', weight: 0.2 });
+            if (currentPrice < lowerBB) signals.push({ type: 'Bollinger', signal: 'BUY', weight: 0.1 });
+            else if (currentPrice > upperBB) signals.push({ type: 'Bollinger', signal: 'SELL', weight: 0.1 });
 
-            // Анализ волатильности и объёма
-            if (volatility > 5 && volumeRatio > 1.5) {
-                signals.push({ type: 'Volatility', signal: 'BUY', weight: 0.1 });
-            } else if (volatility > 5 && volumeRatio < 0.5) {
-                signals.push({ type: 'Volatility', signal: 'SELL', weight: 0.1 });
+            // Свечные паттерны
+            if (candlePatterns.includes('bullish_hammer') || candlePatterns.includes('bullish_engulfing')) {
+                signals.push({ type: 'Candlestick', signal: 'BUY', weight: 0.1 });
+            } else if (candlePatterns.includes('bearish_hanging_man') || candlePatterns.includes('bearish_engulfing')) {
+                signals.push({ type: 'Candlestick', signal: 'SELL', weight: 0.1 });
+            }
+
+            // Фигуры графика
+            if (chartPatterns.includes('cup_handle') || chartPatterns.includes('double_bottom')) {
+                signals.push({ type: 'ChartPattern', signal: 'BUY', weight: 0.1 });
+            } else if (chartPatterns.includes('head_shoulders') || chartPatterns.includes('double_top')) {
+                signals.push({ type: 'ChartPattern', signal: 'SELL', weight: 0.1 });
+            }
+
+            // Дивергенция
+            if (divergence.type === 'bullish') signals.push({ type: 'Divergence', signal: 'BUY', weight: 0.1 });
+            else if (divergence.type === 'bearish') signals.push({ type: 'Divergence', signal: 'SELL', weight: 0.1 });
+
+            // Объёмы
+            if (volumes[volumes.length - 1] > volumes.slice(-5).reduce((a, b) => a + b, 0) / 5) {
+                signals.push({ type: 'Volume', signal: 'BUY', weight: 0.05 });
             }
 
             // Агрегация сигналов
@@ -206,20 +237,20 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
             const [base, quote] = symbol.split('-');
             quoteBalance = demoBalances[quote] || 0;
             baseBalance = demoBalances[base] || 0;
+            console.log(`[🏦 DEMO] 📊 Баланс: ${quoteBalance.toFixed(2)} ${quote} | ${baseBalance.toFixed(6)} ${base}`);
         } else {
             const account = await getAccountInfo();
             const [base, quote] = symbol.split('-');
             quoteBalance = parseFloat(account.balances?.find(b => b.asset === quote)?.free || 0);
             baseBalance = parseFloat(account.balances?.find(b => b.asset === base)?.free || 0);
+            console.log(`[🏦 REAL] 📊 Баланс: ${quoteBalance.toFixed(2)} ${quote} | ${baseBalance.toFixed(6)} ${base}`);
         }
-
-        console.log(`[🏦] 📊 Баланс: ${quoteBalance.toFixed(2)} USDT | ${baseBalance.toFixed(6)} крипты`);
 
         // Расчёт размера ордера с учётом риска и комиссии
         let quantity, side = signal;
         if (side === 'BUY') {
             const riskAmount = quoteBalance * (botSettings.riskLevel * 0.01);
-            quantity = (riskAmount / price) * (1 - botSettings.feeRate); // Учёт комиссии
+            quantity = (riskAmount / price) * (1 - botSettings.feeRate); // Учёт комиссии 0.1%
             console.log(`[📏] 📊 Размер ордера: ${quantity.toFixed(6)} (после комиссии 0.1%)`);
         } else {
             quantity = baseBalance * (botSettings.riskLevel * 0.01);
@@ -227,119 +258,4 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
         }
 
         if (quantity <= 0.000001) {
-            console.log(`[⚠️] 🛑 Недостаточно баланса для сделки`);
-            return null;
-        }
-
-        // Менеджмент риска
-        let stopPrice, takePrice;
-        if (botSettings.useStopLoss) {
-            stopPrice = side === 'BUY' ? price * (1 - botSettings.stopLossPercent / 100) : price * (1 + botSettings.stopLossPercent / 100);
-            console.log(`[🛑] 🛑 Stop Loss: ${stopPrice.toFixed(8)}`);
-        }
-        if (botSettings.useTakeProfit) {
-            takePrice = side === 'BUY' ? price * (1 + botSettings.takeProfitPercent / 100) : price * (1 - botSettings.takeProfitPercent / 100);
-            console.log(`[🎯] 🎯 Take Profit: ${takePrice.toFixed(8)}`);
-        }
-
-        console.log(`[🚀] 💹 Исполнение: ${side} ${quantity.toFixed(6)} ${symbol} по цене ${price}`);
-
-        let orderResult;
-        if (botSettings.useDemoMode) {
-            // Демо-режим
-            orderResult = {
-                orderId: `demo-${Date.now()}`,
-                symbol,
-                side,
-                type: 'LIMIT',
-                quantity: quantity.toFixed(6),
-                price: price.toFixed(8),
-                status: 'FILLED',
-                time: Date.now()
-            };
-
-            // Обновляем демо-баланс
-            const [base, quote] = symbol.split('-');
-            const totalCost = quantity * price;
-            const fee = totalCost * botSettings.feeRate;
-
-            if (side === 'BUY') {
-                demoBalances[quote] = Math.max(0, (demoBalances[quote] || 0) - totalCost - fee);
-                demoBalances[base] = (demoBalances[base] || 0) + quantity;
-            } else {
-                demoBalances[base] = Math.max(0, (demoBalances[base] || 0) - quantity);
-                demoBalances[quote] = (demoBalances[quote] || 0) + totalCost - fee;
-            }
-
-            console.log(`[💰 DEMO] 💹 Обновлён баланс: ${quote}=${demoBalances[quote].toFixed(2)}, ${base}=${demoBalances[base].toFixed(6)}`);
-        } else {
-            // ❗️ Реальный режим — реальный ордер (раскомментируйте для реальной торговли)
-            try {
-                orderResult = await createOrder(symbol, side, 'LIMIT', quantity.toFixed(6), price.toFixed(8));
-                console.log(`[✅ REAL] 💹 Ордер успешно размещен:`, orderResult);
-            } catch (error) {
-                console.error(`[❌ REAL] 💹 Ошибка размещения ордера:`, error.message);
-                return null;
-            }
-        }
-
-        // Сохраняем в историю
-        const tradeRecord = {
-            ...orderResult,
-            signal: signal,
-            confidence: confidence.toFixed(2),
-            analysisReason: analysisReason,
-            indicators: {
-                rsi: rsi.rsi.toFixed(2),
-                macd: macd.macd.toFixed(6),
-                stochastic: `${stoch.k.toFixed(2)}/${stoch.d.toFixed(2)}`,
-                bollinger: `Цена=${currentPrice.toFixed(6)}, Верхняя=${upperBB.toFixed(6)}, Нижняя=${lowerBB.toFixed(6)}`,
-                volatility: `${volatility.toFixed(2)}%`,
-                volumeRatio: volumeRatio.toFixed(2)
-            },
-            mode: botSettings.useDemoMode ? 'DEMO' : 'REAL',
-            timestamp: new Date().toISOString()
-        };
-
-        tradeHistory.push(tradeRecord);
-        if (tradeHistory.length > 100) tradeHistory = tradeHistory.slice(-100);
-
-        botSettings.lastTradeTime = Date.now();
-
-        console.log(`[✅] 💹 СДЕЛКА УСПЕШНО ВЫПОЛНЕНА: ${side} ${quantity.toFixed(6)} ${symbol}`);
-        return tradeRecord;
-
-    } catch (error) {
-        console.error(`[❌] ❗️ Ошибка при анализе ${symbol}:`, error.message);
-        return null;
-    }
-}
-
-// ✅ Основная функция сканирования всех пар
-export async function executeTradingLogic() {
-    console.log(`\n[🔄 ${new Date().toISOString()}] === 🔄 СКАНИРОВАНИЕ ВСЕХ ${CRYPTO_PAIRS.length} ПАР ===`);
-    
-    for (const pair of CRYPTO_PAIRS) {
-        await executeSingleTrade(pair);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Задержка 1 сек между парами
-    }
-    
-    console.log(`[✅] ✅ Сканирование всех пар завершено`);
-}
-
-// ✅ Запуск анализа
-export async function startMultiPairAnalysis() {
-    console.log(`[🤖] 🤖 Бот инициализирован. Режим: ${botSettings.useDemoMode ? 'ДЕМО' : 'РЕАЛЬНЫЙ'}`);
-    console.log(`[📊] 📊 Сканирование всех ${CRYPTO_PAIRS.length} пар каждые 5 минут`);
-
-    setInterval(async () => {
-        if (!botSettings.isEnabled) {
-            console.log("[⏸️] ⏸️  Бот приостановлен");
-            return;
-        }
-        await executeTradingLogic();
-    }, botSettings.analysisInterval);
-
-    // Принудительная сделка раз в день
-    setTimeout(forceDailyTrade, 60000); // Первый запуск через 1 минуту
-}
+            console.log(`[⚠️] 🛑 Недостит
