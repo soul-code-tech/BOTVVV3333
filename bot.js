@@ -38,9 +38,9 @@ let isPairsLoaded = false;
 async function loadAvailablePairs() {
     try {
         const contracts = await getContracts();
-        AVAILABLE_PAIRS = contracts.map(c => c.symbol).filter(symbol => 
-            symbol.endsWith('-USDT') && 
-            c.status === "TRADING" // ✅ Только торгуемые пары
+       AVAILABLE_PAIRS = contracts
+        .filter(c => c.symbol.endsWith('-USDT') && c.status === "TRADING")
+        .map(c => c.symbol); // ✅ Только торгуемые пары
         );
         console.log(`[✅] Загружено ${AVAILABLE_PAIRS.length} доступных пар`);
         isPairsLoaded = true;
