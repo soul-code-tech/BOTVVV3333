@@ -63,7 +63,7 @@ export async function callBingxApi(path, method = 'GET', payload = {}) {
             },
             // Для POST-запросов параметры и подпись идут в теле
             ...(method !== 'GET' && {
-                 {
+             data:{
                     ...payload,
                     signature: signature
                 }
