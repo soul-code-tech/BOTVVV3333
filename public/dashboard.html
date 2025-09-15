@@ -1,167 +1,359 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>📈 Умный бот BingX Spot</title>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>📈 Умный бот BingX Spot</title>
     <style>
-        body { font-family: Arial; padding: 5px; background: #f0f2f5; margin: 0; }
-        .container { background: white; padding: 10px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: 5px; }
-        h1 { text-align: center; color: #1890ff; font-size: 1.1rem; margin: 10px 0; }
-        .form-group { margin: 10px 0; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.8rem; }
-        input, select, button { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
-        button { background: #1890ff; color: white; font-weight: bold; border: none; cursor: pointer; }
-        button:hover { background: #0c7cd5; }
-        .status-card { background: #fafafa; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 0.8rem; }
-        .hidden { display: none; }
-        .error { color: red; margin: 10px 0; font-size: 0.8rem; }
-        .analysis-log { background: #f5f5f5; padding: 10px; border-radius: 6px; margin: 10px 0; max-height: 200px; overflow-y: auto; font-size: 0.7rem; }
-        .log-entry { margin: 5px 0; padding: 5px; border-bottom: 1px solid #eee; }
-        .mode-demo { background: #e6f7ff; border: 1px solid #91d5ff; }
-        .mode-real { background: #fff7e6; border: 1px solid #ffa940; }
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 8px;
+            color: #333;
+            -webkit-text-size-adjust: 100%;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            margin: 8px;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        h1 {
+            text-align: center;
+            color: #1890ff;
+            font-size: 1.2rem;
+            margin: 12px 0 8px;
+            font-weight: 600;
+        }
+        .form-group {
+            margin: 12px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #555;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            margin: 6px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            appearance: none;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #1890ff;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+        button {
+            background: #1890ff;
+            color: white;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #0c7cd5;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        .status-card {
+            background: #fafafa;
+            padding: 12px;
+            border-radius: 10px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+            border-left: 4px solid #1890ff;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .error {
+            color: #f5222d;
+            margin: 12px 0;
+            font-size: 0.85rem;
+            text-align: center;
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .analysis-log {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 12px 0;
+            max-height: 180px;
+            overflow-y: auto;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .log-entry {
+            margin: 6px 0;
+            padding: 6px;
+            border-bottom: 1px solid #eee;
+        }
+        .mode-demo {
+            border-left-color: #1890ff !important;
+            background: #e6f7ff;
+        }
+        .mode-real {
+            border-left-color: #fa8c16 !important;
+            background: #fff7e6;
+        }
+        .pnl-positive {
+            color: #52c41a;
+            font-weight: 600;
+        }
+        .pnl-negative {
+            color: #f5222d;
+            font-weight: 600;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .refresh-btn {
+            background: #f0f0f0;
+            color: #666;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+        }
+        .trade-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 0.8rem;
+        }
+        .trade-side-buy { color: #52c41a; }
+        .trade-side-sell { color: #f5222d; }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+        }
+        /* Адаптив для очень маленьких экранов */
+        @media (max-width: 320px) {
+            .container { margin: 4px; padding: 8px; }
+            h1 { font-size: 1rem; }
+            input, select, button { padding: 10px; font-size: 0.85rem; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <!-- Экран ввода пароля -->
         <div id="passwordScreen">
-            <h3 style="text-align:center; font-size: 1rem;">🔒 Введите пароль</h3>
-            <input type="password" id="passwordInput" placeholder="Пароль" autocomplete="current-password">
-            <button onclick="checkPassword()" style="margin-top: 10px;">Войти</button>
-            <p id="errorMessage" class="error hidden">Неверный пароль</p>
+            <h3 style="text-align:center; font-size: 1.1rem; margin: 20px 0 10px;">🔒 Введите пароль</h3>
+            <input type="password" id="passwordInput" placeholder="Введите пароль" autocomplete="current-password" autofocus>
+            <button onclick="checkPassword()" style="margin-top: 16px; padding: 14px;">Войти</button>
+            <p id="errorMessage" class="error hidden">Неверный пароль. Попробуйте снова.</p>
         </div>
 
         <!-- Основной интерфейс -->
         <div id="mainInterface" class="hidden">
-            <h1>🤖 Умный бот BingX Spot</h1>
+            <div class="header">
+                <h1>🤖 Умный бот BingX</h1>
+                <button class="refresh-btn" onclick="loadStatus()">🔄</button>
+            </div>
             
             <div class="form-group">
-                <label>🎮 Режим торговли:</label>
+                <label>🎮 Режим:</label>
                 <select id="mode" onchange="updateMode()">
-                    <option value="true">ДЕМО (тестовый)</option>
-                    <option value="false">РЕАЛЬНЫЙ (настоящие деньги)</option>
+                    <option value="true">ДЕМО (тест)</option>
+                    <option value="false">РЕАЛЬНЫЙ</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label>⚠️ Уровень риска (1-10): <span id="riskVal">5</span></label>
-                <input type="range" id="risk" min="1" max="10" value="5">
+                <label>⚠️ Риск (1-10): <span id="riskVal">5</span></label>
+                <input type="range" id="risk" min="1" max="10" value="5" style="margin: 8px 0;">
             </div>
 
-            <button onclick="saveSettings()" style="background:#52c41a; margin: 10px 0;">💾 Сохранить настройки</button>
-            <button onclick="tradeNow()" style="background:#faad14; margin: 10px 0;">⚡ Торговать сейчас</button>
-            <button onclick="forceTrade()" style="background:#eb2f96; margin: 10px 0;">📅 Принудительная сделка</button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0;">
+                <button onclick="saveSettings()" style="background:#52c41a; padding: 14px; font-size: 0.95rem;">💾 Настройки</button>
+                <button onclick="tradeNow()" style="background:#faad14; padding: 14px; font-size: 0.95rem;">⚡ Торговать</button>
+            </div>
+            <button onclick="forceTrade()" style="background:#eb2f96; margin: 8px 0; padding: 14px; width: 100%; font-size: 0.95rem;">📅 Принудительная сделка</button>
 
             <div class="status-card" id="statusCard">
-                <h3>📊 Текущее состояние</h3>
-                <div><strong>Режим:</strong> <span id="modeStatus">ДЕМО</span></div>
+                <h3>📊 Статус</h3>
+                <div><strong>Режим:</strong> <span id="modeStatus">Загрузка...</span></div>
                 <div><strong>Баланс:</strong> <span id="balance">-</span></div>
-                <div><strong>Последняя сделка:</strong> <span id="lastTrade">-</span></div>
+                <div><strong>Последняя:</strong> <span id="lastTrade">-</span></div>
                 <div><strong>Обновлено:</strong> <span id="lastUpdate">-</span></div>
             </div>
 
             <div class="status-card">
-                <h3>📈 Последний анализ</h3>
-                <div id="lastAnalysis" style="white-space: pre-wrap; font-size: 0.7rem;">Ожидание анализа...</div>
+                <h3>📈 Анализ</h3>
+                <div id="lastAnalysis" class="analysis-log">Ожидание данных...</div>
             </div>
 
             <div class="status-card">
-                <h3>📋 История сделок</h3>
-                <div id="tradeHistory" style="max-height: 150px; overflow-y: auto; font-size: 0.7rem;">Нет сделок</div>
+                <h3>📋 История (5 последних)</h3>
+                <div id="tradeHistory" style="max-height: 200px; overflow-y: auto; font-size: 0.8rem;">
+                    <div class="loading">Загрузка истории...</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        let CORRECT_PASSWORD = 'admin123';
-        let token = null;
+        let CORRECT_PASSWORD = 'admin123'; // fallback
+        let isLoading = false;
 
-        // Загружаем пароль с сервера
+        // Загружаем пароль с сервера при старте
         async function loadConfig() {
             try {
-                const res = await fetch('/api/config');
+                const res = await fetch('/api/config', { method: 'GET' });
                 const data = await res.json();
-                if (data.success) {
+                if (data.success && data.data?.webPassword) {
                     CORRECT_PASSWORD = data.data.webPassword;
-                    console.log('✅ Пароль загружен');
+                    console.log('✅ Пароль успешно загружен с сервера');
                 }
             } catch (e) {
-                console.error('❌ Ошибка загрузки конфига:', e.message);
+                console.warn('⚠️ Не удалось загрузить пароль, используем fallback:', e.message);
             }
         }
 
+        // Проверка пароля
         function checkPassword() {
-            const input = document.getElementById('passwordInput').value;
+            const input = document.getElementById('passwordInput').value.trim();
             const error = document.getElementById('errorMessage');
+            
+            if (!input) {
+                error.textContent = 'Введите пароль';
+                error.classList.remove('hidden');
+                return;
+            }
+
             if (input === CORRECT_PASSWORD) {
                 document.getElementById('passwordScreen').classList.add('hidden');
                 document.getElementById('mainInterface').classList.remove('hidden');
                 loadStatus();
-                setInterval(loadStatus, 30000); // Обновляем каждые 30 секунд
+                // Обновляем статус каждые 30 секунд
+                setInterval(loadStatus, 30000);
             } else {
                 error.classList.remove('hidden');
+                document.getElementById('passwordInput').value = '';
+                document.getElementById('passwordInput').focus();
             }
         }
 
-        document.getElementById('risk').addEventListener('input', e => {
+        // Обновление отображения риска
+        document.getElementById('risk')?.addEventListener('input', function(e) {
             document.getElementById('riskVal').textContent = e.target.value;
         });
 
+        // Загрузка статуса бота
         async function loadStatus() {
+            if (isLoading) return;
+            isLoading = true;
+            
             try {
-                const res = await fetch('/api/bot/status');
+                const res = await fetch('/api/bot/status', { method: 'GET' });
                 const data = await res.json();
-                if (data.success) {
+                
+                if (data.success && data.data) {
                     const s = data.data;
                     
                     // Обновляем режим
-                    document.getElementById('modeStatus').textContent = s.settings.useDemoMode ? 'ДЕМО' : 'РЕАЛЬНЫЙ';
-                    document.getElementById('modeStatus').style.color = s.settings.useDemoMode ? '#1890ff' : '#fa8c16';
-                    document.getElementById('statusCard').className = 'status-card ' + (s.settings.useDemoMode ? 'mode-demo' : 'mode-real');
-                    document.getElementById('mode').value = s.settings.useDemoMode;
+                    const isDemo = s.settings?.useDemoMode ?? true;
+                    document.getElementById('modeStatus').textContent = isDemo ? 'ДЕМО' : 'РЕАЛЬНЫЙ';
+                    document.getElementById('modeStatus').style.color = isDemo ? '#1890ff' : '#fa8c16';
+                    document.getElementById('statusCard').className = 'status-card ' + (isDemo ? 'mode-demo' : 'mode-real');
+                    document.getElementById('mode').value = isDemo;
                     
                     // Обновляем баланс
-                    if (s.settings.useDemoMode) {
-                        document.getElementById('balance').textContent = `${s.demoBalances.USDT?.toFixed(2) || 0} USDT`;
+                    let balanceText = '-';
+                    if (isDemo) {
+                        balanceText = `${s.demoBalances?.USDT?.toFixed(2) || 0} USDT`;
                     } else {
-                        document.getElementById('balance').textContent = s.availableBalance || '0 USDT';
+                        balanceText = s.availableBalance || '0 USDT';
                     }
+                    document.getElementById('balance').textContent = balanceText;
                     
-                    // Обновляем последнюю сделку
+                    // Обновляем последнюю сделку и анализ
                     if (s.tradeHistory && s.tradeHistory.length > 0) {
                         const last = s.tradeHistory[s.tradeHistory.length - 1];
-                        document.getElementById('lastTrade').textContent = `${last.side} ${last.quantity} ${last.symbol} (${last.mode})`;
-                        document.getElementById('lastUpdate').textContent = new Date(last.timestamp).toLocaleTimeString();
+                        document.getElementById('lastTrade').textContent = `${last.side} ${last.quantity?.toFixed(4) || 0} ${last.symbol}`;
+                        document.getElementById('lastUpdate').textContent = new Date(last.timestamp).toLocaleTimeString() + ' ' + new Date(last.timestamp).toLocaleDateString();
                         
                         // Отображаем анализ последней сделки
-                        let analysisText = `Сигнал: ${last.signal} (${last.analysisReason})\n`;
-                        analysisText += `Уверенность: ${last.confidence}\n`;
-                        analysisText += `Индикаторы:\n`;
-                        if (last.indicators) {
-                            for (const [key, value] of Object.entries(last.indicators)) {
-                                analysisText += `- ${key}: ${value}\n`;
-                            }
-                        }
+                        let analysisText = `Сигнал: ${last.signal || 'N/A'}\n`;
+                        analysisText += `Уверенность: ${(last.confidence * 100).toFixed(1)}%\n`;
+                        analysisText += `PnL: ${last.pnl?.toFixed(4) || 0} (${(last.pnlPercent || 0).toFixed(2)}%)\n`;
+                        analysisText += `Причина: ${last.analysisReason || 'N/A'}\n`;
+                        analysisText += `Режим: ${last.mode || 'N/A'}`;
+                        
                         document.getElementById('lastAnalysis').textContent = analysisText;
                         
                         // Отображаем историю сделок
                         let historyHtml = '';
-                        s.tradeHistory.slice(-5).reverse().forEach(trade => {
-                            const signalColor = trade.signal === 'BUY' ? 'color: #52c41a;' : 'color: #f5222d;';
-                            historyHtml += `<div style="${signalColor}">${trade.side} ${trade.quantity} ${trade.symbol} - ${new Date(trade.timestamp).toLocaleTimeString()}</div>`;
-                        });
+                        const recentTrades = s.tradeHistory.slice(-5).reverse();
+                        
+                        if (recentTrades.length === 0) {
+                            historyHtml = '<div style="text-align:center;color:#888;">Нет сделок</div>';
+                        } else {
+                            recentTrades.forEach(trade => {
+                                const sideClass = trade.side === 'BUY' ? 'trade-side-buy' : 'trade-side-sell';
+                                const pnlClass = (trade.pnl >= 0) ? 'pnl-positive' : 'pnl-negative';
+                                const timeStr = new Date(trade.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                                
+                                historyHtml += `
+                                <div class="trade-item">
+                                    <div class="${sideClass}">${trade.side} ${trade.symbol}</div>
+                                    <div>Цена: ${parseFloat(trade.price).toFixed(4)}</div>
+                                    <div class="${pnlClass}">PnL: ${trade.pnl?.toFixed(4) || 0} (${(trade.pnlPercent || 0).toFixed(2)}%)</div>
+                                    <div><small>${timeStr} | ${trade.mode}</small></div>
+                                </div>`;
+                            });
+                        }
                         document.getElementById('tradeHistory').innerHTML = historyHtml;
+                    } else {
+                        document.getElementById('lastTrade').textContent = 'Нет сделок';
+                        document.getElementById('lastUpdate').textContent = '-';
+                        document.getElementById('lastAnalysis').textContent = 'Нет данных для анализа';
+                        document.getElementById('tradeHistory').innerHTML = '<div style="text-align:center;color:#888;">Нет сделок</div>';
                     }
                 }
             } catch (e) {
-                console.error('Ошибка загрузки статуса:', e);
+                console.error('❌ Ошибка загрузки статуса:', e.message);
+                alert('Ошибка загрузки данных: ' + e.message);
+            } finally {
+                isLoading = false;
             }
         }
 
+        // Обновление режима
         async function updateMode() {
             const useDemo = document.getElementById('mode').value === 'true';
             const settings = { useDemoMode: useDemo };
+            
             try {
                 const res = await fetch('/api/bot/settings', {
                     method: 'POST',
@@ -169,20 +361,25 @@
                     body: JSON.stringify(settings)
                 });
                 const result = await res.json();
+                
                 if (result.success) {
-                    alert(`✅ Режим: ${useDemo ? 'ДЕМО' : 'РЕАЛЬНЫЙ'}`);
+                    alert(`✅ Режим изменен на: ${useDemo ? 'ДЕМО' : 'РЕАЛЬНЫЙ'}`);
                     loadStatus();
+                } else {
+                    throw new Error(result.error || 'Неизвестная ошибка');
                 }
             } catch (e) {
                 alert('❌ Ошибка: ' + e.message);
             }
         }
 
+        // Сохранение настроек
         async function saveSettings() {
             const settings = {
                 riskLevel: parseInt(document.getElementById('risk').value),
                 useDemoMode: document.getElementById('mode').value === 'true'
             };
+            
             try {
                 const res = await fetch('/api/bot/settings', {
                     method: 'POST',
@@ -190,45 +387,67 @@
                     body: JSON.stringify(settings)
                 });
                 const result = await res.json();
+                
                 if (result.success) {
                     alert('✅ Настройки сохранены!');
                     loadStatus();
+                } else {
+                    throw new Error(result.error || 'Неизвестная ошибка');
                 }
             } catch (e) {
                 alert('❌ Ошибка: ' + e.message);
             }
         }
 
+        // Торговать сейчас
         async function tradeNow() {
-            if (confirm('Запустить анализ всех пар?')) {
-                try {
-                    const res = await fetch('/api/bot/trade-now', { method: 'POST' });
-                    const result = await res.json();
-                    if (result.success) {
-                        alert('✅ Анализ запущен!');
-                    }
-                } catch (e) {
-                    alert('❌ Ошибка: ' + e.message);
+            if (!confirm('🚀 Запустить анализ всех пар? Это может занять несколько минут.')) return;
+            
+            try {
+                const res = await fetch('/api/bot/trade-now', { method: 'POST' });
+                const result = await res.json();
+                
+                if (result.success) {
+                    alert('✅ Анализ запущен! Результаты появятся через несколько минут.');
+                } else {
+                    throw new Error(result.error || 'Неизвестная ошибка');
                 }
+            } catch (e) {
+                alert('❌ Ошибка: ' + e.message);
             }
         }
 
+        // Принудительная сделка
         async function forceTrade() {
-            if (confirm('Выполнить принудительную сделку?')) {
-                try {
-                    const res = await fetch('/api/bot/trade-now', { method: 'POST' });
-                    const result = await res.json();
-                    if (result.success) {
-                        alert('✅ Принудительная сделка запущена!');
-                    }
-                } catch (e) {
-                    alert('❌ Ошибка: ' + e.message);
+            if (!confirm('📅 Выполнить принудительную сделку?')) return;
+            
+            try {
+                const res = await fetch('/api/bot/force-trade', { method: 'POST' });
+                const result = await res.json();
+                
+                if (result.success) {
+                    alert('✅ Принудительная сделка запущена!');
+                } else {
+                    throw new Error(result.error || 'Неизвестная ошибка');
                 }
+            } catch (e) {
+                alert('❌ Ошибка: ' + e.message);
             }
         }
 
-        // Инициализация
-        loadConfig();
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig(); // Загружаем пароль
+            // Если хотим — можно добавить автофокус на поле пароля
+            document.getElementById('passwordInput')?.focus();
+        });
+
+        // Поддержка Enter для входа
+        document.getElementById('passwordInput')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
     </script>
 </body>
 </html>
