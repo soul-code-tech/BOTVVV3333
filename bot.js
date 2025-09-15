@@ -1,19 +1,16 @@
-// ✅ bot.js — ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ ФЬЮЧЕРСОВ
+// bot.js — АВТОМАТИЧЕСКИЙ ТОРГОВЫЙ БОТ ДЛЯ ФЬЮЧЕРСОВ
 import { 
     getKlines, 
     getTickerPrice, 
     getAccountInfo, 
     createOrder,
-    getContracts // ✅ Новое: получаем список доступных пар
+    getContracts,
+    setLeverage
 } from './bingxApi.js';
 
 import { 
     calculateRSI, 
-    calculateMACD, 
-    calculateStochastic,
-    calculateBollingerBands,
-    calculateSMA,
-    calculateEMA
+    calculateBollingerBands
 } from './technicalAnalysis.js';
 
 import fs from 'fs';
@@ -34,11 +31,6 @@ function logError(message) {
     logToFile('errors.log', `ERROR: ${message}`);
 }
 
-function logTrade(trade) {
-    const msg = `TRADE | ${trade.mode} | ${trade.side} ${trade.symbol} | Цена: ${trade.price} | Кол-во: ${trade.quantity} | PnL: ${trade.pnl.toFixed(4)} (${trade.pnlPercent.toFixed(2)}%)`;
-    logToFile('trades.log', msg);
-}
-
 // ✅ Получаем список доступных пар при старте
 let AVAILABLE_PAIRS = [];
 let isPairsLoaded = false;
@@ -46,50 +38,46 @@ let isPairsLoaded = false;
 async function loadAvailablePairs() {
     try {
         const contracts = await getContracts();
-        AVAILABLE_PAIRS = contracts.map(c => c.symbol).filter(symbol => symbol.endsWith('-USDT'));
+        AVAILABLE_PAIRS = contracts.map(c => c.symbol).filter(symbol => 
+            symbol.endsWith('-USDT') && 
+            c.status === "TRADING" // ✅ Только торгуемые пары
+        );
         console.log(`[✅] Загружено ${AVAILABLE_PAIRS.length} доступных пар`);
         isPairsLoaded = true;
     } catch (error) {
         console.error('[❌] Ошибка загрузки пар:', error.message);
-        // Используем fallback список
+        // Fallback список
         AVAILABLE_PAIRS = [
             "BTC-USDT", "ETH-USDT", "BNB-USDT", "SOL-USDT", "XRP-USDT",
-            "ADA-USDT", "DOGE-USDT", "TON-USDT", "AVAX-USDT", "SHIB-USDT",
-            "LINK-USDT", "BCH-USDT", "DOT-USDT", "LTC-USDT", "NEAR-USDT",
-            "MATIC-USDT", "APT-USDT", "UNI-USDT", "ATOM-USDT", "INJ-USDT"
+            "ADA-USDT", "DOGE-USDT", "TON-USDT", "AVAX-USDT", "SHIB-USDT"
         ];
     }
 }
 
-// ✅ Ждём загрузки пар перед анализом
 async function waitForPairs() {
     if (isPairsLoaded) return;
     await loadAvailablePairs();
 }
 
 let botSettings = {
-    strategy: 'advanced',
-    riskLevel: 5,
-    maxPositionSize: 100,
+    strategy: 'simple',
+    riskLevel: 3, // 3% от баланса на сделку
     isEnabled: true,
     useDemoMode: true,
-    analysisInterval: 300000,
-    feeRate: 0.001,
+    analysisInterval: 300000, // 5 минут
+    feeRate: 0.001, // 0.1% комиссия
     useStopLoss: true,
     stopLossPercent: 2.0,
     useTakeProfit: true,
     takeProfitPercent: 4.0,
     lastTradeTime: null,
     minTradeInterval: 300000,
-    maxConcurrentRequests: 10
+    maxConcurrentRequests: 5,
+    defaultLeverage: 10 // ✅ Плечо 10x
 };
 
 let tradeHistory = [];
-let demoBalances = {
-    'USDT': 1000.0,
-    'BTC': 0.0,
-    'ETH': 0.0
-};
+let demoBalances = { 'USDT': 1000.0 };
 
 export function updateBotSettings(newSettings) {
     if (newSettings.useDemoMode !== undefined) {
@@ -153,6 +141,14 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
     console.log(`\n[🔍 ${new Date().toISOString()}] === 🤖 АНАЛИЗ ПАРЫ: ${symbol} ===`);
     
     try {
+        // ✅ Проверяем существование пары
+        try {
+            await getTickerPrice(symbol);
+        } catch (e) {
+            console.log(`[⚠️] Пара ${symbol} не существует или не торгуется`);
+            return null;
+        }
+
         if (!klines) {
             klines = await getKlines(symbol, '5m', 100);
             if (!klines || klines.length < 14) {
@@ -162,161 +158,148 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
         }
 
         const closePrices = klines.map(candle => parseFloat(candle[4]));
-        const volumes = klines.map(candle => parseFloat(candle[5]));
         const currentPrice = closePrices[closePrices.length - 1];
 
-        // ✅ Исправление ошибки "rsiValues.slice is not a function"
+        // ✅ Простая и надёжная стратегия
         const rsi = calculateRSI(klines);
-        const macd = calculateMACD(klines);
-        const stoch = calculateStochastic(klines);
         const bb = calculateBollingerBands(closePrices, 20, 2);
-        const sma20 = calculateSMA(closePrices, 20);
-        const ema12 = calculateEMA(closePrices, 12);
-        const upperBB = bb.upper?.[bb.upper.length - 1] || 0;
-        const lowerBB = bb.lower?.[bb.lower.length - 1] || 0;
+        const upperBB = bb.upper[bb.upper.length - 1];
+        const lowerBB = bb.lower[bb.lower.length - 1];
 
         let signal = 'NEUTRAL';
-        let confidence = 0.3;
-        let analysisReason = "Нейтральный рынок";
+        if (rsi.rsi < 30 && currentPrice < lowerBB) signal = 'BUY';
+        else if (rsi.rsi > 70 && currentPrice > upperBB) signal = 'SELL';
 
-        if (forcedSide) {
-            signal = forcedSide;
-            confidence = 0.8;
-            analysisReason = "Принудительная ежедневная сделка";
-        } else {
-            const signals = [];
-            if (rsi.rsi < 30) signals.push({ type: 'RSI', signal: 'BUY', weight: 0.2 });
-            else if (rsi.rsi > 70) signals.push({ type: 'RSI', signal: 'SELL', weight: 0.2 });
-            if (macd.histogram > 0 && macd.macd > macd.signal) signals.push({ type: 'MACD', signal: 'BUY', weight: 0.15 });
-            else if (macd.histogram < 0 && macd.macd < macd.signal) signals.push({ type: 'MACD', signal: 'SELL', weight: 0.15 });
-            if (stoch.k < 20 && stoch.k > stoch.d) signals.push({ type: 'Stochastic', signal: 'BUY', weight: 0.15 });
-            else if (stoch.k > 80 && stoch.k < stoch.d) signals.push({ type: 'Stochastic', signal: 'SELL', weight: 0.15 });
-            if (currentPrice < lowerBB) signals.push({ type: 'Bollinger', signal: 'BUY', weight: 0.1 });
-            else if (currentPrice > upperBB) signals.push({ type: 'Bollinger', signal: 'SELL', weight: 0.1 });
-
-            const buySignals = signals.filter(s => s.signal === 'BUY');
-            const sellSignals = signals.filter(s => s.signal === 'SELL');
-            const buyWeight = buySignals.reduce((sum, s) => sum + s.weight, 0);
-            const sellWeight = sellSignals.reduce((sum, s) => sum + s.weight, 0);
-
-            if (buyWeight > sellWeight && buyWeight > 0.3) {
-                signal = 'BUY';
-                confidence = buyWeight;
-                analysisReason = `Покупка: ${buySignals.map(s => s.type).join(', ')}`;
-            } else if (sellWeight > buyWeight && sellWeight > 0.3) {
-                signal = 'SELL';
-                confidence = sellWeight;
-                analysisReason = `Продажа: ${sellSignals.map(s => s.type).join(', ')}`;
-            }
-        }
-
-        console.log(`[🎯] 🎯 Итоговый сигнал: ${signal} | Уверенность: ${confidence.toFixed(2)} | Причина: ${analysisReason}`);
         if (signal === 'NEUTRAL') {
             console.log(`[💤] 🛑 Нет торгового сигнала для ${symbol}`);
             return null;
         }
 
-        const ticker = await getTickerPrice(symbol);
-        const price = parseFloat(ticker.price);
-        console.log(`[💰] 💹 Текущая цена: ${price}`);
-
-        let quoteBalance;
+        // ✅ Получаем баланс
+        let availableBalance;
         if (botSettings.useDemoMode) {
-            quoteBalance = demoBalances.USDT || 0;
-            console.log(`[🏦 DEMO] 📊 Баланс: ${quoteBalance.toFixed(2)} USDT`);
+            availableBalance = demoBalances.USDT || 0;
+            console.log(`[🏦 DEMO] 📊 Баланс: ${availableBalance.toFixed(2)} USDT`);
         } else {
             const account = await getAccountInfo();
-            quoteBalance = account.balance ? parseFloat(account.balance) : 0;
-            console.log(`[🏦 REAL] 📊 Баланс: ${quoteBalance.toFixed(2)} USDT`);
+            availableBalance = account.balance ? parseFloat(account.balance) : 0;
+            console.log(`[🏦 REAL] 📊 Баланс: ${availableBalance.toFixed(2)} USDT`);
         }
 
-        if (isNaN(quoteBalance)) {
-            console.log(`[⚠️] 🛑 Ошибка: баланс равен NaN`);
+        if (isNaN(availableBalance) || availableBalance <= 0) {
+            console.log(`[⚠️] 🛑 Недостаточно баланса`);
             return null;
         }
 
-        let quantity = 0;
-        const riskAmount = quoteBalance * (botSettings.riskLevel * 0.01);
-        quantity = (riskAmount / price) * (1 - botSettings.feeRate);
+        // ✅ Устанавливаем плечо
+        if (!botSettings.useDemoMode) {
+            try {
+                await setLeverage(symbol, botSettings.defaultLeverage);
+                console.log(`[⚖️] Установлено плечо ${botSettings.defaultLeverage}x для ${symbol}`);
+            } catch (e) {
+                console.log(`[⚠️] Не удалось установить плечо:`, e.message);
+            }
+        }
+
+        // ✅ Рассчитываем размер позиции с учётом риска и плеча
+        const riskAmount = availableBalance * (botSettings.riskLevel * 0.01);
+        const positionSize = (riskAmount * botSettings.defaultLeverage) / currentPrice;
+        const quantity = positionSize;
 
         if (quantity <= 0.000001) {
-            console.log(`[⚠️] 🛑 Недостаточно средств: ${quantity.toFixed(6)}`);
+            console.log(`[⚠️] 🛑 Слишком маленький размер ордера: ${quantity.toFixed(6)}`);
             return null;
         }
 
+        // ✅ Проверка интервала между сделками
         const now = Date.now();
         if (botSettings.lastTradeTime && (now - botSettings.lastTradeTime) < botSettings.minTradeInterval) {
             console.log(`[⏳] ⏸️ Слишком рано для новой сделки`);
             return null;
         }
 
+        // ✅ Выполнение ордера
         let orderResult;
-        try {
-            if (botSettings.useDemoMode) {
-                const amountInQuote = quantity * price;
-                const fee = amountInQuote * botSettings.feeRate;
-
-                if (demoBalances.USDT < amountInQuote + fee) {
-                    console.log(`[⚠️ DEMO] 🛑 Недостаточно USDT`);
-                    return null;
-                }
-                demoBalances.USDT -= amountInQuote + fee;
-                if (signal === 'BUY') {
-                    demoBalances[symbol.split('-')[0]] = (demoBalances[symbol.split('-')[0]] || 0) + quantity;
-                } else {
-                    demoBalances[symbol.split('-')[0]] = (demoBalances[symbol.split('-')[0]] || 0) - quantity;
-                }
-
-                orderResult = {
-                    orderId: `DEMO-${Date.now()}`,
-                    symbol,
-                    side: signal,
-                    type: 'MARKET',
-                    price,
-                    quantity,
-                    fee,
-                    executedQty: quantity,
-                    status: 'FILLED'
-                };
-                console.log(`[🎮 DEMO] ✅ Ордер выполнен`);
-            } else {
-                orderResult = await createOrder(symbol, signal, 'MARKET', quantity.toFixed(6));
-                console.log(`[🚀 REAL] ✅ Ордер отправлен`);
-            }
-
-            botSettings.lastTradeTime = now;
-            const pnl = calculatePnL(symbol, signal, price, quantity);
-            const pnlPercent = quantity > 0 ? (pnl / (quantity * price)) * 100 : 0;
-
-            const tradeRecord = {
-                timestamp: now,
-                symbol,
-                side: signal,
-                price,
-                quantity,
-                confidence,
-                analysisReason,
-                mode: botSettings.useDemoMode ? 'DEMO' : 'REAL',
-                orderId: orderResult.orderId || 'N/A',
-                fee: botSettings.useDemoMode ? (quantity * price * botSettings.feeRate) : 0,
-                pnl: pnl,
-                pnlPercent: pnlPercent,
-                status: 'FILLED'
+        if (botSettings.useDemoMode) {
+            // 🎮 Демо-режим с учётом плеча и комиссии
+            const notionalValue = quantity * currentPrice;
+            const fee = notionalValue * botSettings.feeRate;
+            demoBalances.USDT -= fee;
+            
+            // Имитация PnL (1% прибыли/убытка для демо)
+            const pnl = signal === 'BUY' ? notionalValue * 0.01 : notionalValue * -0.01;
+            demoBalances.USDT += pnl;
+            
+            orderResult = { 
+                orderId: `DEMO-${Date.now()}`, 
+                status: 'FILLED',
+                price: currentPrice,
+                quantity: quantity
             };
-
-            tradeHistory.push(tradeRecord);
-            logTrade(tradeRecord);
-            console.log(`[✅] 📝 Сделка добавлена. Баланс:`, demoBalances);
-
-            return tradeRecord;
-        } catch (error) {
-            console.error(`[❌] 🚨 Ошибка ордера:`, error.message);
-            logError(`Ошибка ордера для ${symbol}: ${error.message}`);
-            return null;
+            console.log(`[🎮 DEMO] ✅ Ордер: ${signal} ${quantity.toFixed(6)} ${symbol} с плечом ${botSettings.defaultLeverage}x`);
+        } else {
+            // 🚀 Реальный ордер
+            orderResult = await createOrder(symbol, signal, 'MARKET', quantity.toFixed(6));
+            console.log(`[🚀 REAL] ✅ Ордер отправлен: ${signal} ${quantity.toFixed(6)} ${symbol}`);
         }
+
+        botSettings.lastTradeTime = now;
+
+        // ✅ Расчёт PnL и запись в историю
+        const pnl = calculatePnL(symbol, signal, currentPrice, quantity);
+        const pnlPercent = quantity > 0 ? (pnl / (quantity * currentPrice)) * 100 : 0;
+
+        const tradeRecord = {
+            timestamp: now,
+            symbol,
+            side: signal,
+            price: currentPrice,
+            quantity: quantity,
+            leverage: botSettings.defaultLeverage,
+            mode: botSettings.useDemoMode ? 'DEMO' : 'REAL',
+            orderId: orderResult.orderId || 'N/A',
+            fee: botSettings.useDemoMode ? (quantity * currentPrice * botSettings.feeRate) : 0,
+            pnl: pnl,
+            pnlPercent: pnlPercent,
+            status: 'FILLED'
+        };
+
+        tradeHistory.push(tradeRecord);
+        logToFile('trades.log', `TRADE | ${tradeRecord.mode} | ${signal} ${symbol} @ ${currentPrice} | Кол-во: ${quantity.toFixed(6)} | Плечо: ${botSettings.defaultLeverage}x | PnL: ${pnl.toFixed(4)}`);
+        console.log(`[✅] 📝 Сделка добавлена`);
+
+        // ✅ Установка Stop-Loss и Take-Profit
+        if (botSettings.useStopLoss || botSettings.useTakeProfit) {
+            const slSide = signal === 'BUY' ? 'SELL' : 'BUY';
+            const tpSide = slSide;
+
+            try {
+                if (botSettings.useStopLoss && !botSettings.useDemoMode) {
+                    const slPrice = signal === 'BUY'
+                        ? currentPrice * (1 - botSettings.stopLossPercent / 100)
+                        : currentPrice * (1 + botSettings.stopLossPercent / 100);
+                    await createOrder(symbol, slSide, 'STOP_MARKET', quantity.toFixed(6), null, slPrice.toFixed(8));
+                    console.log(`[🚀 REAL SL] 🛑 Stop-Loss установлен: ${slPrice.toFixed(8)}`);
+                }
+
+                if (botSettings.useTakeProfit && !botSettings.useDemoMode) {
+                    const tpPrice = signal === 'BUY'
+                        ? currentPrice * (1 + botSettings.takeProfitPercent / 100)
+                        : currentPrice * (1 - botSettings.takeProfitPercent / 100);
+                    await createOrder(symbol, tpSide, 'TAKE_PROFIT_MARKET', quantity.toFixed(6), null, tpPrice.toFixed(8));
+                    console.log(`[🚀 REAL TP] 🎯 Take-Profit установлен: ${tpPrice.toFixed(8)}`);
+                }
+            } catch (sltpError) {
+                console.error(`[⚠️ SL/TP ERROR]`, sltpError.message);
+                logError(`Ошибка установки SL/TP для ${symbol}: ${sltpError.message}`);
+            }
+        }
+
+        return tradeRecord;
+
     } catch (error) {
-        console.error(`[❌] 🚨 Ошибка анализа:`, error.message);
-        logError(`Ошибка анализа пары ${symbol}: ${error.message}`);
+        console.error(`[❌] 🚨 Ошибка для ${symbol}:`, error.message);
+        logError(`Ошибка анализа/торговли для ${symbol}: ${error.message}`);
         return null;
     }
 }
@@ -335,15 +318,15 @@ export async function executeTradingLogic() {
         results.push(...batchResults);
         
         if (i + batchSize < AVAILABLE_PAIRS.length) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 2000)); // пауза 2 сек
         }
     }
 
-    console.log("[✅] Анализ завершён.");
+    console.log("[✅] Анализ и торговля завершены.");
 }
 
 export function startMultiPairAnalysis() {
-    loadAvailablePairs(); // Загружаем пары при старте
-    console.log(`[⏰] Анализ каждые ${botSettings.analysisInterval / 60000} минут`);
+    loadAvailablePairs();
+    console.log(`[⏰] Автоматическая торговля каждые ${botSettings.analysisInterval / 60000} минут`);
     setInterval(executeTradingLogic, botSettings.analysisInterval);
 }
