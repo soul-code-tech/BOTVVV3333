@@ -38,7 +38,7 @@ let botSettings = {
     riskLevel: 5,
     maxPositionSize: 100,
     isEnabled: true,
-    scanAllPairs: false,
+    scanAllPairs: true, // ✅ ВКЛЮЧЕНО ПО УМОЛЧАНИЮ — СКАНИРУЕМ ВСЕ 200+ ПАР
     analysisInterval: 300000, // 5 минут
     lastAnalysisTime: null,
     feeRate: 0.001, // 0.1% комиссия
