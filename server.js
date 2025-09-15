@@ -19,11 +19,11 @@ const PORT = process.env.PORT || 10000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ Эндпоинт для получения пароля из Environment Variables — ИСПРАВЛЕНО
+// ✅ Эндпоинт для получения пароля — ИСПРАВЛЕНО
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
-        data: {  // ← ИСПРАВЛЕНО: data: { ... }
+        data: {
             webPassword: process.env.WEB_INTERFACE_PASSWORD || 'admin123'
         }
     });
@@ -34,7 +34,7 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'OK', time: new Date().toISOString() });
 });
 
-// API: статус бота
+// API: статус бота — ИСПРАВЛЕНО
 app.get('/api/bot/status', async (req, res) => {
     try {
         const status = getBotStatus();
@@ -45,7 +45,7 @@ app.get('/api/bot/status', async (req, res) => {
         const balance = account.balances?.find(b => b.asset === quoteAsset);
         status.availableBalance = balance ? parseFloat(balance.free).toFixed(2) + " " + quoteAsset : "0 USDT";
         status.lastUpdate = new Date().toISOString();
-        res.json({ success: true, data: status });  // ← ИСПРАВЛЕНО: data: status
+        res.json({ success: true, data: status });
     } catch (error) {
         console.error("Ошибка /api/bot/status:", error.message);
         res.status(500).json({ success: false, error: error.message });
@@ -68,11 +68,23 @@ app.post('/api/bot/settings', (req, res) => {
 // API: торговать сейчас
 app.post('/api/bot/trade-now', async (req, res) => {
     try {
-        console.log("[API] ⚡ Запущен ручной анализ");
+        console.log("[API] ⚡ Запущен ручной анализ всех пар");
         await executeTradingLogic();
-        res.json({ success: true, message: "Анализ запущен", timestamp: new Date().toISOString() });
+        res.json({ success: true, message: "Анализ всех пар запущен", timestamp: new Date().toISOString() });
     } catch (error) {
         console.error("Ошибка /api/bot/trade-now:", error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// API: принудительная сделка — НОВЫЙ РОУТ
+app.post('/api/bot/force-trade', async (req, res) => {
+    try {
+        console.log("[API] 📅 Запущена принудительная сделка");
+        await forceDailyTrade();
+        res.json({ success: true, message: "Принудительная сделка запущена", timestamp: new Date().toISOString() });
+    } catch (error) {
+        console.error("Ошибка /api/bot/force-trade:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -100,7 +112,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Сервер запущен на порту ${PORT}`);
     console.log(`🌐 Интерфейс: https://botvvv3333-2.onrender.com/dashboard`);
     console.log(`🔒 Пароль берётся из WEB_INTERFACE_PASSWORD`);
-    console.log(`📊 Health check: https://botvvv3333-2.onrender.com/health`);
 
     // Запускаем анализ
     startMultiPairAnalysis();
