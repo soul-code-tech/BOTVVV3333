@@ -1,4 +1,4 @@
-// bingxApi.js — ПОЛНОСТЬЮ ГОТОВЫЙ
+// ✅ bingxApi.js — ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ SPOT (работает на Render)
 import CryptoJS from 'crypto-js';
 import axios from 'axios';
 import dotenv from 'dotenv';
@@ -14,23 +14,18 @@ if (!API_KEY || !SECRET_KEY) {
     throw new Error("API keys not configured");
 }
 
-function generateSignature(payload, urlEncode = true) {
+function generateSignature(payload) {
     const timestamp = Date.now();
     let parameters = "";
 
-    for (const key in payload) {
-        if (urlEncode && key !== 'timestamp') {
+    // Сортируем параметры по ключам (обязательно для Spot API)
+    const sortedKeys = Object.keys(payload).sort();
+    for (const key of sortedKeys) {
+        if (key !== 'timestamp') {
             parameters += `${key}=${encodeURIComponent(payload[key])}&`;
-        } else {
-            parameters += `${key}=${payload[key]}&`;
         }
     }
-
-    if (!payload.timestamp) {
-        parameters += `timestamp=${timestamp}`;
-    } else {
-        parameters = parameters.slice(0, -1);
-    }
+    parameters += `timestamp=${timestamp}`;
 
     const signature = CryptoJS.HmacSHA256(parameters, SECRET_KEY).toString(CryptoJS.enc.Hex);
     return { parameters, signature, timestamp };
@@ -38,7 +33,7 @@ function generateSignature(payload, urlEncode = true) {
 
 export async function callBingxApi(path, method = 'GET', payload = {}) {
     try {
-        const { parameters, signature } = generateSignature(payload, method === 'GET');
+        const { parameters, signature } = generateSignature(payload);
         let url;
 
         if (method === 'GET') {
@@ -51,13 +46,16 @@ export async function callBingxApi(path, method = 'GET', payload = {}) {
             headers: {
                 'X-BX-APIKEY': API_KEY,
             },
-            ...(method !== 'GET' && {
-                data: {
-                    ...payload,
-                    signature: signature
-                }
-            })
         };
+
+        // Для POST — передаём параметры в теле
+        if (method !== 'GET') {
+            config.data = {
+                ...payload,
+                timestamp: Date.now(),
+                signature: signature
+            };
+        }
 
         const response = await axios(config);
 
@@ -72,26 +70,34 @@ export async function callBingxApi(path, method = 'GET', payload = {}) {
     }
 }
 
-// SPOT API функции — ИСПРАВЛЕНО НА SPOT!
+// ✅ SPOT API — ПРАВИЛЬНЫЕ ЭНДПОИНТЫ
+
+// 📈 Получить цену тикера — Spot
 export async function getTickerPrice(symbol) {
-    return await callBingxApi(`/openApi/spot/v1/ticker/price`, 'GET', { symbol });
+    // Spot API использует symbol в формате BTCUSDT (без дефиса)
+    const cleanSymbol = symbol.replace('-', '');
+    return await callBingxApi(`/openApi/spot/v1/market/ticker`, 'GET', { symbol: cleanSymbol });
 }
 
+// 📊 Получить свечи (K-линии) — Spot
 export async function getKlines(symbol, interval, limit = 100) {
-    return await callBingxApi(`/openApi/spot/v1/market/klines`, 'GET', { symbol, interval, limit });
+    const cleanSymbol = symbol.replace('-', '');
+    return await callBingxApi(`/openApi/spot/v1/market/kline`, 'GET', { symbol: cleanSymbol, interval, limit });
 }
 
+// 💰 Получить информацию о балансе — Spot
 export async function getAccountInfo() {
     return await callBingxApi(`/openApi/spot/v1/account/balance`, 'GET', {});
 }
 
+// 🛒 Создать ордер — Spot
 export async function createOrder(symbol, side, type, quantity, price = null, stopPrice = null) {
+    const cleanSymbol = symbol.replace('-', '');
     const payload = {
-        symbol,
-        side,
-        type,
+        symbol: cleanSymbol,
+        side: side.toUpperCase(), // BUY или SELL
+        type: type.toUpperCase(), // MARKET, LIMIT и т.д.
         quantity: parseFloat(quantity).toFixed(8),
-        timestamp: Date.now()
     };
     if (price) payload.price = parseFloat(price).toFixed(8);
     if (stopPrice) payload.stopPrice = parseFloat(stopPrice).toFixed(8);
