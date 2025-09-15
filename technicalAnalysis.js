@@ -24,7 +24,7 @@ app.get('/api/config', (req, res) => {
          {
             webPassword: process.env.WEB_INTERFACE_PASSWORD || 'admin123'
         }
-    });
+    );
 });
 
 app.get('/health', (req, res) => {
