@@ -8,7 +8,7 @@ dotenv.config();
 
 import { getTickerPrice, getKlines, getAccountInfo } from './bingxApi.js';
 import { generateTradingSignal } from './technicalAnalysis.js';
-import { updateBotSettings, executeTradingLogic, getBotStatus, startMultiPairAnalysis } from './bot.js';
+import { updateBotSettings, executeTradingLogic, getBotStatus, startMultiPairAnalysis, forceDailyTrade } from './bot.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -99,9 +99,12 @@ app.use('*', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Сервер запущен на порту ${PORT}`);
     console.log(`🌐 Интерфейс: https://botvvv3333-2.onrender.com/dashboard`);
-    console.log(`📊 Health check: https://botvvv3333-2.onrender.com/health`);
     console.log(`🔒 Пароль берётся из WEB_INTERFACE_PASSWORD`);
+    console.log(`📊 Health check: https://botvvv3333-2.onrender.com/health`);
 
     // Запускаем анализ
     startMultiPairAnalysis();
+
+    // Принудительная сделка раз в день
+    setInterval(forceDailyTrade, 24 * 60 * 60 * 1000); // 24 часа
 });
