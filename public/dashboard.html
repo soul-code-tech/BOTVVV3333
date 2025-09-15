@@ -63,6 +63,11 @@
                 <input type="range" id="risk" min="1" max="10" value="5">
             </div>
 
+            <div class="form-group">
+                <label>🔍 Сканировать все 200+ пар</label>
+                <input type="checkbox" id="scanAll" checked>
+            </div>
+
             <button onclick="saveSettings()" style="background:#52c41a; margin-top: 10px;">💾 Сохранить настройки</button>
             <button onclick="tradeNow()" style="background:#faad14; margin-top: 10px;">⚡ Торговать сейчас</button>
 
@@ -77,8 +82,22 @@
     </div>
 
     <script>
-        // Замените на ваш реальный пароль из Render Environment Variables
-        const CORRECT_PASSWORD = "Batas41725";
+        let CORRECT_PASSWORD = 'admin123'; // Значение по умолчанию
+        let token = null;
+
+        // Загружаем пароль с сервера
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                if (data.success) {
+                    CORRECT_PASSWORD = data.data.webPassword;
+                    console.log('✅ Пароль успешно загружен с сервера');
+                }
+            } catch (e) {
+                console.error('❌ Не удалось загрузить конфиг:', e.message);
+            }
+        }
 
         function checkPassword() {
             const input = document.getElementById('passwordInput').value;
@@ -108,6 +127,11 @@
                     document.getElementById('price').textContent = s.currentPrice || 'N/A';
                     document.getElementById('balance').textContent = s.availableBalance || 'N/A';
                     document.getElementById('lastUpdate').textContent = s.lastUpdate ? new Date(s.lastUpdate).toLocaleTimeString() : 'Никогда';
+                    document.getElementById('scanAll').checked = s.settings?.scanAllPairs || false;
+                    document.getElementById('pair').value = s.settings?.tradingPair || 'BTC-USDT';
+                    document.getElementById('strategy').value = s.settings?.strategy || 'stochastic';
+                    document.getElementById('risk').value = s.settings?.riskLevel || 5;
+                    document.getElementById('riskVal').textContent = s.settings?.riskLevel || 5;
                 }
             } catch (e) {
                 console.error('Ошибка загрузки статуса:', e);
@@ -118,7 +142,8 @@
             const settings = {
                 tradingPair: document.getElementById('pair').value,
                 strategy: document.getElementById('strategy').value,
-                riskLevel: parseInt(document.getElementById('risk').value)
+                riskLevel: parseInt(document.getElementById('risk').value),
+                scanAllPairs: document.getElementById('scanAll').checked
             };
             try {
                 const res = await fetch('/api/bot/settings', {
@@ -156,6 +181,9 @@
                 }
             }
         }
+
+        // Загружаем конфиг при старте
+        loadConfig();
     </script>
 </body>
 </html>
