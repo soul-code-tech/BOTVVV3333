@@ -16,12 +16,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 10000; // Render требует 10000 по умолчанию
+const PORT = process.env.PORT || 10000;
 
+// Важно: должен быть до всех роутов
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// ✅ Гарантируем, что папка public доступна
+app.use(express.static(path.join(__dirname, 'public'), {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+    }
+}));
 
 const WEB_PASSWORD = process.env.WEB_INTERFACE_PASSWORD || 'admin123';
 console.log(`🔒 Пароль интерфейса: ${WEB_PASSWORD}`);
@@ -84,20 +93,37 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
+// 🆘 Отладочный роут — проверяем, что файлы на месте
+app.get('/debug/files', (req, res) => {
+    try {
+        const fs = require('fs');
+        const files = fs.readdirSync(path.join(__dirname, 'public'));
+        res.json({ files: files });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Health check для Render
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'OK', time: new Date().toISOString() });
 });
 
-// Обработка 404
+// Обработка 404 — теперь с отладкой
 app.use('*', (req, res) => {
-    res.status(404).json({ error: 'Endpoint not found' });
+    console.log(`[404] Запрошенный путь: ${req.path}`);
+    res.status(404).json({ 
+        error: 'Endpoint not found',
+        requestedPath: req.path,
+        availablePaths: ['/dashboard', '/api/bot/status', '/health']
+    });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Сервер запущен на порту ${PORT}`);
     console.log(`🌐 Интерфейс: https://botvvv3333-2.onrender.com`);
     console.log(`📊 Health check: https://botvvv3333-2.onrender.com/health`);
+    console.log(`🔍 Отладка файлов: https://botvvv3333-2.onrender.com/debug/files`);
 
     // Запускаем анализ всех пар
     startMultiPairAnalysis();
