@@ -19,11 +19,11 @@ const PORT = process.env.PORT || 10000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ Эндпоинт для получения пароля из Environment Variables
+// ✅ Эндпоинт для получения пароля из Environment Variables — ИСПРАВЛЕНО
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
-         {
+        data: {  // ← ИСПРАВЛЕНО: data: { ... }
             webPassword: process.env.WEB_INTERFACE_PASSWORD || 'admin123'
         }
     });
@@ -45,7 +45,7 @@ app.get('/api/bot/status', async (req, res) => {
         const balance = account.balances?.find(b => b.asset === quoteAsset);
         status.availableBalance = balance ? parseFloat(balance.free).toFixed(2) + " " + quoteAsset : "0 USDT";
         status.lastUpdate = new Date().toISOString();
-        res.json({ success: true,  status });
+        res.json({ success: true, data: status });  // ← ИСПРАВЛЕНО: data: status
     } catch (error) {
         console.error("Ошибка /api/bot/status:", error.message);
         res.status(500).json({ success: false, error: error.message });
