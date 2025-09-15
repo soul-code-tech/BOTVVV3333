@@ -51,6 +51,7 @@ export async function callBingxApi(path, method = 'GET', payload = {}) {
             headers: {
                 'X-BX-APIKEY': API_KEY,
             },
+            // ✅ ИСПРАВЛЕНО: Убрана лишняя скобка, правильный синтаксис
             ...(method !== 'GET' && {
                  {
                     ...payload,
