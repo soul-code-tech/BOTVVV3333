@@ -57,7 +57,7 @@ export async function callBingxApi(path, method = 'GET', payload = {}) {
                     ...payload,
                     signature: signature
                 }
-            })
+            )
         };
 
         const response = await axios(config);
