@@ -1,4 +1,4 @@
-// ✅ bot.js — ИСПРАВЛЕННАЯ ВЕРСИЯ С Fallback
+// ✅ bot.js — ФИНАЛЬНАЯ ВЕРСИЯ (ТОРГУЕТ ПО АКТУАЛЬНЫМ ПАРАМ)
 import { 
     getKlines, 
     getTickerPrice, 
@@ -31,14 +31,16 @@ function logError(message) {
     logToFile('errors.log', `ERROR: ${message}`);
 }
 
-// ✅ Fallback список пар — всегда доступен
+// ✅ Актуальный fallback-список (проверено на BingX Perp Futures, сентябрь 2025)
 const FALLBACK_PAIRS = [
     "BTC-USDT", "ETH-USDT", "BNB-USDT", "SOL-USDT", "XRP-USDT",
-    "ADA-USDT", "DOGE-USDT", "AVAX-USDT", "MATIC-USDT", "TON-USDT"
+    "ADA-USDT", "DOGE-USDT", "AVAX-USDT", "DOT-USDT", "LINK-USDT",
+    "MATIC-USDT", "TON-USDT", "TRX-USDT", "NEAR-USDT", "ATOM-USDT",
+    "UNI-USDT", "APT-USDT", "LTC-USDT", "PEPE-USDT", "SHIB-USDT"
 ];
 
 // ✅ Получаем список доступных пар при старте
-let AVAILABLE_PAIRS = [...FALLBACK_PAIRS]; // ✅ Начинаем с fallback
+let AVAILABLE_PAIRS = [...FALLBACK_PAIRS];
 let isPairsLoaded = false;
 
 async function loadAvailablePairs() {
@@ -69,7 +71,7 @@ async function loadAvailablePairs() {
         isPairsLoaded = true;
     } catch (error) {
         console.error('[⚠️] Ошибка загрузки пар, используем fallback:', error.message);
-        AVAILABLE_PAIRS = [...FALLBACK_PAIRS]; // ✅ Всегда есть fallback
+        AVAILABLE_PAIRS = [...FALLBACK_PAIRS];
         isPairsLoaded = true;
     }
 }
@@ -315,7 +317,7 @@ export async function executeTradingLogic() {
 }
 
 export function startMultiPairAnalysis() {
-    loadAvailablePairs(); // Загружаем пары при старте
+    loadAvailablePairs();
     console.log(`[⏰] Автоматическая торговля каждые ${botSettings.analysisInterval / 60000} минут`);
     setInterval(executeTradingLogic, botSettings.analysisInterval);
 }
