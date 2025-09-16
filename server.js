@@ -1,4 +1,4 @@
-// server.js — ПОЛНОСТЬЮ РАБОЧАЯ ВЕРСИЯ ДЛЯ ФЬЮЧЕРСОВ
+// ✅ server.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (без 404 ошибок)
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -6,20 +6,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// ✅ Импортируем функции из bot.js
-import { 
-    getTickerPrice, 
-    getKlines, 
-    getAccountInfo 
-} from './bingxApi.js';
-
-import { 
-    updateBotSettings, 
-    executeTradingLogic, 
-    getBotStatus, 
-    startMultiPairAnalysis, 
-    forceDailyTrade 
-} from './bot.js';
+import { getTickerPrice, getAccountInfo } from './bingxApi.js';
+import { updateBotSettings, executeTradingLogic, getBotStatus, startMultiPairAnalysis, forceDailyTrade } from './bot.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +22,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
-        data: {
+         {
             webPassword: process.env.WEB_INTERFACE_PASSWORD || 'admin123'
         }
     });
@@ -49,28 +37,23 @@ app.get('/health', (req, res) => {
 app.get('/api/bot/status', async (req, res) => {
     try {
         const status = getBotStatus();
-        
-        // ✅ Используем BTC-USDT для получения цены
         const ticker = await getTickerPrice("BTC-USDT");
         status.currentPrice = ticker.price || "N/A";
-        
-        // ✅ Получаем баланс для фьючерсов
+
         let availableBalance = "0 USDT";
         if (!status.settings.useDemoMode) {
             const account = await getAccountInfo();
             if (account && account.balance !== undefined) {
                 availableBalance = `${parseFloat(account.balance).toFixed(2)} USDT`;
             }
-         } else {
-    availableBalance = `${status.demoBalances.USDT?.toFixed(2)} USDT`;
-     }
-        
+        } else {
+            availableBalance = `${status.demoBalances.USDT?.toFixed(2)} USDT`;
+        }
         status.availableBalance = availableBalance;
         status.lastUpdate = new Date().toISOString();
-        
-        res.json({ success: true, data: status });
+
+        res.json({ success: true,  status });
     } catch (error) {
-        console.error("Ошибка /api/bot/status:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -78,24 +61,19 @@ app.get('/api/bot/status', async (req, res) => {
 // ✅ API: сохранить настройки
 app.post('/api/bot/settings', (req, res) => {
     try {
-        const settings = req.body;
-        console.log("[API] 🔄 Получены настройки:", settings);
-        updateBotSettings(settings);
+        updateBotSettings(req.body);
         res.json({ success: true, message: "Настройки сохранены" });
     } catch (error) {
-        console.error("Ошибка /api/bot/settings:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// ✅ API: торговать сейчас (анализ всех пар)
+// ✅ API: торговать сейчас
 app.post('/api/bot/trade-now', async (req, res) => {
     try {
-        console.log("[API] ⚡ Запущен ручной анализ всех пар");
         await executeTradingLogic();
-        res.json({ success: true, message: "Анализ всех пар запущен", timestamp: new Date().toISOString() });
+        res.json({ success: true, message: "Торговля запущена", timestamp: new Date().toISOString() });
     } catch (error) {
-        console.error("Ошибка /api/bot/trade-now:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -103,27 +81,31 @@ app.post('/api/bot/trade-now', async (req, res) => {
 // ✅ API: принудительная сделка
 app.post('/api/bot/force-trade', async (req, res) => {
     try {
-        console.log("[API] 📅 Запущена принудительная сделка");
         await forceDailyTrade();
         res.json({ success: true, message: "Принудительная сделка запущена", timestamp: new Date().toISOString() });
     } catch (error) {
-        console.error("Ошибка /api/bot/force-trade:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// ✅ Роуты для интерфейса
+// ✅ Главная страница — перенаправление на /dashboard
 app.get('/', (req, res) => {
     res.redirect('/dashboard');
 });
 
+// ✅ Страница дашборда
 app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+    const dashboardPath = path.join(__dirname, 'public', 'dashboard.html');
+    res.sendFile(dashboardPath, (err) => {
+        if (err) {
+            console.error('[❌] Ошибка отправки dashboard.html:', err.message);
+            res.status(404).send('Dashboard not found. Please check if public/dashboard.html exists.');
+        }
+    });
 });
 
 // ✅ Обработка 404
 app.use('*', (req, res) => {
-    console.log(`[404] Запрошенный путь: ${req.path}`);
     res.status(404).json({ 
         error: 'Endpoint not found',
         requestedPath: req.path
@@ -136,9 +118,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Интерфейс: https://botvvv3333-2.onrender.com/dashboard`);
     console.log(`🔒 Пароль берётся из WEB_INTERFACE_PASSWORD`);
 
-    // ✅ Запускаем автоматический анализ
     startMultiPairAnalysis();
-
-    // ✅ Принудительная сделка раз в день
-    setInterval(forceDailyTrade, 24 * 60 * 60 * 1000); // 24 часа
+    setInterval(forceDailyTrade, 24 * 60 * 60 * 1000);
 });
