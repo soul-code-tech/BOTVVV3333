@@ -22,7 +22,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
-         {
+         
             webPassword: process.env.WEB_INTERFACE_PASSWORD || 'admin123'
         }
     });
