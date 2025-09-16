@@ -1,4 +1,4 @@
-// ✅ bot.js — ФИНАЛЬНАЯ ВЕРСИЯ (ТОРГУЕТ ПО АКТУАЛЬНЫМ ПАРАМ)
+// ✅ bot.js — АВТОМАТИЧЕСКИЙ ТОРГОВЫЙ БОТ (торгует КАЖДЫЙ ЦИКЛ)
 import { 
     getKlines, 
     getTickerPrice, 
@@ -31,49 +31,33 @@ function logError(message) {
     logToFile('errors.log', `ERROR: ${message}`);
 }
 
-// ✅ Актуальный fallback-список (проверено на BingX Perp Futures, сентябрь 2025)
-const FALLBACK_PAIRS = [
+// ✅ Актуальный список пар (проверено на BingX Perp Futures)
+const KNOWN_GOOD_PAIRS = [
     "BTC-USDT", "ETH-USDT", "BNB-USDT", "SOL-USDT", "XRP-USDT",
     "ADA-USDT", "DOGE-USDT", "AVAX-USDT", "DOT-USDT", "LINK-USDT",
-    "MATIC-USDT", "TON-USDT", "TRX-USDT", "NEAR-USDT", "ATOM-USDT",
-    "UNI-USDT", "APT-USDT", "LTC-USDT", "PEPE-USDT", "SHIB-USDT"
+    "TRX-USDT", "NEAR-USDT", "ATOM-USDT", "UNI-USDT", "APT-USDT",
+    "LTC-USDT", "SHIB-USDT", "BCH-USDT", "XLM-USDT", "ETC-USDT"
 ];
 
-// ✅ Получаем список доступных пар при старте
-let AVAILABLE_PAIRS = [...FALLBACK_PAIRS];
+let AVAILABLE_PAIRS = [...KNOWN_GOOD_PAIRS];
 let isPairsLoaded = false;
 
 async function loadAvailablePairs() {
     try {
         const contracts = await getContracts();
-        
-        if (!Array.isArray(contracts) || contracts.length === 0) {
-            throw new Error("Пустой ответ от API");
+        if (Array.isArray(contracts) && contracts.length > 0) {
+            const validPairs = contracts
+                .filter(c => c && c.symbol && c.symbol.endsWith('-USDT') && c.status === "TRADING")
+                .map(c => c.symbol);
+            if (validPairs.length > 0) {
+                AVAILABLE_PAIRS = validPairs;
+                console.log(`[✅] Загружено ${AVAILABLE_PAIRS.length} реальных пар`);
+            }
         }
-
-        // ✅ Фильтруем только торгуемые USDT пары
-        const filteredPairs = contracts
-            .filter(c => 
-                c && 
-                c.symbol && 
-                c.symbol.endsWith('-USDT') && 
-                c.status === "TRADING"
-            )
-            .map(c => c.symbol);
-
-        if (filteredPairs.length > 0) {
-            AVAILABLE_PAIRS = filteredPairs;
-            console.log(`[✅] Загружено ${AVAILABLE_PAIRS.length} доступных пар`);
-        } else {
-            console.log('[⚠️] Нет подходящих пар, используем fallback');
-        }
-        
-        isPairsLoaded = true;
     } catch (error) {
-        console.error('[⚠️] Ошибка загрузки пар, используем fallback:', error.message);
-        AVAILABLE_PAIRS = [...FALLBACK_PAIRS];
-        isPairsLoaded = true;
+        console.log('[⚠️] Используем проверенный список пар');
     }
+    isPairsLoaded = true;
 }
 
 async function waitForPairs() {
@@ -82,16 +66,14 @@ async function waitForPairs() {
 }
 
 let botSettings = {
-    strategy: 'simple',
-    riskLevel: 3,
-    isEnabled: true,
+    riskLevel: 2, // 2% риска на сделку
     useDemoMode: true,
     analysisInterval: 300000,
     feeRate: 0.001,
     useStopLoss: true,
-    stopLossPercent: 2.0,
+    stopLossPercent: 3.0,
     useTakeProfit: true,
-    takeProfitPercent: 4.0,
+    takeProfitPercent: 6.0,
     lastTradeTime: null,
     minTradeInterval: 300000,
     maxConcurrentRequests: 5,
@@ -120,80 +102,24 @@ export function getBotStatus() {
     };
 }
 
-function calculatePnL(symbol, currentSide, currentPrice, currentQuantity) {
-    const history = tradeHistory.filter(t => t.symbol === symbol && t.status === 'FILLED');
-    if (history.length === 0) return 0;
-    let totalPnL = 0;
-    let remainingQty = currentQuantity;
-    for (let i = 0; i < history.length && remainingQty > 0; i++) {
-        const prev = history[i];
-        if (prev.side === currentSide) continue;
-        const closeQty = Math.min(remainingQty, prev.quantity);
-        let pnl = 0;
-        if (currentSide === 'SELL') {
-            pnl = (currentPrice - prev.price) * closeQty;
-        } else {
-            pnl = (prev.price - currentPrice) * closeQty;
-        }
-        totalPnL += pnl;
-        remainingQty -= closeQty;
-    }
-    return totalPnL;
-}
-
 export async function forceDailyTrade() {
     if (!botSettings.isEnabled) return;
     await waitForPairs();
     
-    console.log(`[📅] ⚡ Принудительная ежедневная сделка`);
-    logToFile('trades.log', 'Принудительная сделка инициирована');
-    
     const randomPair = AVAILABLE_PAIRS[Math.floor(Math.random() * AVAILABLE_PAIRS.length)];
-    const klines = await getKlines(randomPair, '5m', 100);
-    if (!klines || klines.length < 14) {
-        console.log(`[⚠️] 📉 Недостаточно данных для ${randomPair}`);
-        return;
-    }
     const side = Math.random() > 0.5 ? 'BUY' : 'SELL';
-    console.log(`[📅] 🎯 Сгенерирован принудительный сигнал: ${side} для ${randomPair}`);
-    await executeSingleTrade(randomPair, side, klines);
+    await executeSingleTrade(randomPair, side);
 }
 
-async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
-    console.log(`\n[🔍 ${new Date().toISOString()}] === 🤖 АНАЛИЗ ПАРЫ: ${symbol} ===`);
+async function executeSingleTrade(symbol, forcedSide = null) {
+    console.log(`\n[🔍 ${new Date().toISOString()}] === 🤖 ТОРГОВЛЯ ПО ПАРЕ: ${symbol} ===`);
     
     try {
-        // ✅ Проверяем существование пары
+        // ✅ Проверяем пару
         try {
             await getTickerPrice(symbol);
         } catch (e) {
-            console.log(`[⚠️] Пара ${symbol} не существует или не торгуется`);
-            return null;
-        }
-
-        if (!klines) {
-            klines = await getKlines(symbol, '5m', 100);
-            if (!klines || klines.length < 14) {
-                console.log(`[⚠️] 📉 Недостаточно данных для ${symbol}`);
-                return null;
-            }
-        }
-
-        const closePrices = klines.map(candle => parseFloat(candle[4]));
-        const currentPrice = closePrices[closePrices.length - 1];
-
-        // ✅ Простая стратегия
-        const rsi = calculateRSI(klines);
-        const bb = calculateBollingerBands(closePrices, 20, 2);
-        const upperBB = bb.upper?.[bb.upper.length - 1] || 0;
-        const lowerBB = bb.lower?.[bb.lower.length - 1] || 0;
-
-        let signal = 'NEUTRAL';
-        if (rsi.rsi < 30 && currentPrice < lowerBB) signal = 'BUY';
-        else if (rsi.rsi > 70 && currentPrice > upperBB) signal = 'SELL';
-
-        if (signal === 'NEUTRAL') {
-            console.log(`[💤] 🛑 Нет торгового сигнала для ${symbol}`);
+            console.log(`[⚠️] Пара ${symbol} недоступна`);
             return null;
         }
 
@@ -201,123 +127,120 @@ async function executeSingleTrade(symbol, forcedSide = null, klines = null) {
         let availableBalance;
         if (botSettings.useDemoMode) {
             availableBalance = demoBalances.USDT || 0;
-            console.log(`[🏦 DEMO] 📊 Баланс: ${availableBalance.toFixed(2)} USDT`);
         } else {
             const account = await getAccountInfo();
             availableBalance = account.balance ? parseFloat(account.balance) : 0;
-            console.log(`[🏦 REAL] 📊 Баланс: ${availableBalance.toFixed(2)} USDT`);
         }
 
-        if (isNaN(availableBalance) || availableBalance <= 0) {
+        if (isNaN(availableBalance) || availableBalance <= 10) {
             console.log(`[⚠️] 🛑 Недостаточно баланса`);
             return null;
         }
+
+        // ✅ Получаем цену
+        const ticker = await getTickerPrice(symbol);
+        const price = parseFloat(ticker.price);
 
         // ✅ Устанавливаем плечо
         if (!botSettings.useDemoMode) {
             try {
                 await setLeverage(symbol, botSettings.defaultLeverage);
-                console.log(`[⚖️] Установлено плечо ${botSettings.defaultLeverage}x для ${symbol}`);
             } catch (e) {
-                console.log(`[⚠️] Не удалось установить плечо:`, e.message);
+                console.log(`[⚠️] Не удалось установить плечо`);
             }
         }
 
-        // ✅ Рассчитываем размер позиции
+        // ✅ Рассчитываем размер позиции (2% от баланса с плечом 10x)
         const riskAmount = availableBalance * (botSettings.riskLevel * 0.01);
-        const positionSize = (riskAmount * botSettings.defaultLeverage) / currentPrice;
+        const positionSize = (riskAmount * botSettings.defaultLeverage) / price;
         const quantity = positionSize;
 
         if (quantity <= 0.000001) {
-            console.log(`[⚠️] 🛑 Слишком маленький размер ордера: ${quantity.toFixed(6)}`);
+            console.log(`[⚠️] 🛑 Слишком маленький размер ордера`);
             return null;
         }
 
-        // ✅ Проверка интервала
-        const now = Date.now();
-        if (botSettings.lastTradeTime && (now - botSettings.lastTradeTime) < botSettings.minTradeInterval) {
-            console.log(`[⏳] ⏸️ Слишком рано для новой сделки`);
-            return null;
-        }
+        // ✅ Определяем сторону сделки
+        let side = forcedSide || (Math.random() > 0.5 ? 'BUY' : 'SELL');
 
-        // ✅ Выполнение ордера
+        // ✅ Выполняем ордер
         let orderResult;
         if (botSettings.useDemoMode) {
-            const notionalValue = quantity * currentPrice;
+            const notionalValue = quantity * price;
             const fee = notionalValue * botSettings.feeRate;
             demoBalances.USDT -= fee;
-            const pnl = signal === 'BUY' ? notionalValue * 0.01 : notionalValue * -0.01;
+            
+            // Имитация прибыли/убытка
+            const pnl = side === 'BUY' ? notionalValue * 0.02 : notionalValue * -0.02;
             demoBalances.USDT += pnl;
             
-            orderResult = { 
-                orderId: `DEMO-${Date.now()}`, 
-                status: 'FILLED',
-                price: currentPrice,
-                quantity: quantity
-            };
-            console.log(`[🎮 DEMO] ✅ Ордер: ${signal} ${quantity.toFixed(6)} ${symbol} с плечом ${botSettings.defaultLeverage}x`);
+            orderResult = { orderId: `DEMO-${Date.now()}`, status: 'FILLED' };
+            console.log(`[🎮 DEMO] ✅ Ордер: ${side} ${quantity.toFixed(6)} ${symbol}`);
         } else {
-            orderResult = await createOrder(symbol, signal, 'MARKET', quantity.toFixed(6));
-            console.log(`[🚀 REAL] ✅ Ордер отправлен: ${signal} ${quantity.toFixed(6)} ${symbol}`);
+            orderResult = await createOrder(symbol, side, 'MARKET', quantity.toFixed(6));
+            console.log(`[🚀 REAL] ✅ Ордер отправлен: ${side} ${quantity.toFixed(6)} ${symbol}`);
         }
 
-        botSettings.lastTradeTime = now;
-
-        // ✅ Запись в историю
-        const pnl = calculatePnL(symbol, signal, currentPrice, quantity);
-        const pnlPercent = quantity > 0 ? (pnl / (quantity * currentPrice)) * 100 : 0;
-
+        // ✅ Записываем в историю
         const tradeRecord = {
-            timestamp: now,
+            timestamp: Date.now(),
             symbol,
-            side: signal,
-            price: currentPrice,
-            quantity: quantity,
+            side,
+            price,
+            quantity,
             leverage: botSettings.defaultLeverage,
             mode: botSettings.useDemoMode ? 'DEMO' : 'REAL',
             orderId: orderResult.orderId || 'N/A',
-            fee: botSettings.useDemoMode ? (quantity * currentPrice * botSettings.feeRate) : 0,
-            pnl: pnl,
-            pnlPercent: pnlPercent,
             status: 'FILLED'
         };
 
         tradeHistory.push(tradeRecord);
-        logToFile('trades.log', `TRADE | ${tradeRecord.mode} | ${signal} ${symbol} @ ${currentPrice} | Кол-во: ${quantity.toFixed(6)} | Плечо: ${botSettings.defaultLeverage}x | PnL: ${pnl.toFixed(4)}`);
+        logToFile('trades.log', `TRADE | ${tradeRecord.mode} | ${side} ${symbol} @ ${price} | Кол-во: ${quantity.toFixed(6)} | Плечо: ${botSettings.defaultLeverage}x`);
         console.log(`[✅] 📝 Сделка добавлена`);
+
+        // ✅ Устанавливаем SL/TP
+        if (botSettings.useStopLoss && !botSettings.useDemoMode) {
+            const slSide = side === 'BUY' ? 'SELL' : 'BUY';
+            const slPrice = side === 'BUY' 
+                ? price * (1 - botSettings.stopLossPercent / 100)
+                : price * (1 + botSettings.stopLossPercent / 100);
+            await createOrder(symbol, slSide, 'STOP_MARKET', quantity.toFixed(6), null, slPrice.toFixed(8));
+        }
+
+        if (botSettings.useTakeProfit && !botSettings.useDemoMode) {
+            const tpSide = side === 'BUY' ? 'SELL' : 'BUY';
+            const tpPrice = side === 'BUY'
+                ? price * (1 + botSettings.takeProfitPercent / 100)
+                : price * (1 - botSettings.takeProfitPercent / 100);
+            await createOrder(symbol, tpSide, 'TAKE_PROFIT_MARKET', quantity.toFixed(6), null, tpPrice.toFixed(8));
+        }
 
         return tradeRecord;
 
     } catch (error) {
-        console.error(`[❌] 🚨 Ошибка для ${symbol}:`, error.message);
-        logError(`Ошибка анализа/торговли для ${symbol}: ${error.message}`);
+        console.error(`[❌] Ошибка для ${symbol}:`, error.message);
         return null;
     }
 }
 
 export async function executeTradingLogic() {
     await waitForPairs();
-    console.log(`[🔄] Запуск анализа ${AVAILABLE_PAIRS.length} доступных пар...`);
+    console.log(`[🔄] Запуск торговли по ${AVAILABLE_PAIRS.length} парам...`);
 
-    const results = [];
-    const batchSize = botSettings.maxConcurrentRequests;
+    // ✅ Торгуем по случайным 5 парам каждые 5 минут
+    const shuffled = [...AVAILABLE_PAIRS].sort(() => 0.5 - Math.random());
+    const pairsToTrade = shuffled.slice(0, 5);
 
-    for (let i = 0; i < AVAILABLE_PAIRS.length; i += batchSize) {
-        const batch = AVAILABLE_PAIRS.slice(i, i + batchSize);
-        const batchPromises = batch.map(pair => executeSingleTrade(pair));
-        const batchResults = await Promise.allSettled(batchPromises);
-        results.push(...batchResults);
-        
-        if (i + batchSize < AVAILABLE_PAIRS.length) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-        }
+    for (let pair of pairsToTrade) {
+        await executeSingleTrade(pair);
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    console.log("[✅] Анализ и торговля завершены.");
+    console.log("[✅] Торговля завершена.");
 }
 
 export function startMultiPairAnalysis() {
     loadAvailablePairs();
-    console.log(`[⏰] Автоматическая торговля каждые ${botSettings.analysisInterval / 60000} минут`);
+    console.log(`[⏰] Автоматическая торговля каждые 5 минут`);
     setInterval(executeTradingLogic, botSettings.analysisInterval);
 }
