@@ -1,4 +1,4 @@
-// ✅ bot.js — АВТОМАТИЧЕСКИЙ ТОРГОВЫЙ БОТ (торгует КАЖДЫЙ ЦИКЛ)
+// ✅ bot.js — ФИНАЛЬНАЯ ВЕРСИЯ (ТОРГУЕТ КАЖДЫЙ ЦИКЛ)
 import { 
     getKlines, 
     getTickerPrice, 
@@ -7,11 +7,6 @@ import {
     getContracts,
     setLeverage
 } from './bingxApi.js';
-
-import { 
-    calculateRSI, 
-    calculateBollingerBands
-} from './technicalAnalysis.js';
 
 import fs from 'fs';
 import path from 'path';
@@ -31,7 +26,7 @@ function logError(message) {
     logToFile('errors.log', `ERROR: ${message}`);
 }
 
-// ✅ Актуальный список пар (проверено на BingX Perp Futures)
+// ✅ Проверенный список пар (работают на BingX Perp Futures)
 const KNOWN_GOOD_PAIRS = [
     "BTC-USDT", "ETH-USDT", "BNB-USDT", "SOL-USDT", "XRP-USDT",
     "ADA-USDT", "DOGE-USDT", "AVAX-USDT", "DOT-USDT", "LINK-USDT",
@@ -68,7 +63,7 @@ async function waitForPairs() {
 let botSettings = {
     riskLevel: 2, // 2% риска на сделку
     useDemoMode: true,
-    analysisInterval: 300000,
+    analysisInterval: 300000, // 5 минут
     feeRate: 0.001,
     useStopLoss: true,
     stopLossPercent: 3.0,
@@ -145,6 +140,7 @@ async function executeSingleTrade(symbol, forcedSide = null) {
         if (!botSettings.useDemoMode) {
             try {
                 await setLeverage(symbol, botSettings.defaultLeverage);
+                console.log(`[⚖️] Установлено плечо ${botSettings.defaultLeverage}x для ${symbol}`);
             } catch (e) {
                 console.log(`[⚠️] Не удалось установить плечо`);
             }
@@ -160,7 +156,7 @@ async function executeSingleTrade(symbol, forcedSide = null) {
             return null;
         }
 
-        // ✅ Определяем сторону сделки
+        // ✅ Определяем сторону сделки — 50/50
         let side = forcedSide || (Math.random() > 0.5 ? 'BUY' : 'SELL');
 
         // ✅ Выполняем ордер
@@ -205,6 +201,7 @@ async function executeSingleTrade(symbol, forcedSide = null) {
                 ? price * (1 - botSettings.stopLossPercent / 100)
                 : price * (1 + botSettings.stopLossPercent / 100);
             await createOrder(symbol, slSide, 'STOP_MARKET', quantity.toFixed(6), null, slPrice.toFixed(8));
+            console.log(`[🚀 REAL SL] 🛑 Stop-Loss установлен: ${slPrice.toFixed(8)}`);
         }
 
         if (botSettings.useTakeProfit && !botSettings.useDemoMode) {
@@ -213,6 +210,7 @@ async function executeSingleTrade(symbol, forcedSide = null) {
                 ? price * (1 + botSettings.takeProfitPercent / 100)
                 : price * (1 - botSettings.takeProfitPercent / 100);
             await createOrder(symbol, tpSide, 'TAKE_PROFIT_MARKET', quantity.toFixed(6), null, tpPrice.toFixed(8));
+            console.log(`[🚀 REAL TP] 🎯 Take-Profit установлен: ${tpPrice.toFixed(8)}`);
         }
 
         return tradeRecord;
@@ -227,9 +225,9 @@ export async function executeTradingLogic() {
     await waitForPairs();
     console.log(`[🔄] Запуск торговли по ${AVAILABLE_PAIRS.length} парам...`);
 
-    // ✅ Торгуем по случайным 5 парам каждые 5 минут
+    // ✅ Торгуем по 3 случайным парам каждые 5 минут
     const shuffled = [...AVAILABLE_PAIRS].sort(() => 0.5 - Math.random());
-    const pairsToTrade = shuffled.slice(0, 5);
+    const pairsToTrade = shuffled.slice(0, 3);
 
     for (let pair of pairsToTrade) {
         await executeSingleTrade(pair);
