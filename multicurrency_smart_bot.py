@@ -19,10 +19,9 @@ load_dotenv()
 # ============= НАСТРОЙКИ =============
 API_KEY = os.getenv("BINGX_API_KEY")
 SECRET_KEY = os.getenv("BINGX_SECRET_KEY")
-WEB_PASSWORD = os.getenv("WEB_PASSWORD", "admin")  # Пароль для веб-интерфейса
-BASE_URL = "https://open-api.bingx.io"
+WEB_PASSWORD = os.getenv("WEB_PASSWORD", "admin")
+BASE_URL = "https://open-api.bingx.com"
 
-# Расширенный список пар (50+)
 SYMBOLS = [
     "BTC-USDT", "ETH-USDT", "BNB-USDT", "SOL-USDT", "XRP-USDT",
     "DOGE-USDT", "ADA-USDT", "AVAX-USDT", "MATIC-USDT", "DOT-USDT",
@@ -38,17 +37,16 @@ SYMBOLS = [
     "TAO-USDT", "ONDO-USDT", "STRK-USDT", "ZRO-USDT", "ACT-USDT"
 ]
 
-CHECK_INTERVAL = 300  # секунд (5 минут)
-RISK_PER_TRADE_PCT = 1.0  # Риск на сделку в % от капитала
-MAX_DRAWDOWN_PCT = 20.0  # Максимальная просадка для остановки
-MAX_ACTIVE_POSITIONS = 5  # Максимум одновременных позиций
-TRAILING_STOP_PCT = 2.0   # Трейлинг-стоп в процентах от максимума
+CHECK_INTERVAL = 300
+RISK_PER_TRADE_PCT = 1.0
+MAX_DRAWDOWN_PCT = 50.0  # Увеличено для теста
+MAX_ACTIVE_POSITIONS = 5
+TRAILING_STOP_PCT = 2.0
 
 # ============= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =============
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# Хранилище для трейлинг-стопов
 trailing_stops = {}
 active_trades = {}
 trade_history = []
@@ -109,7 +107,7 @@ def get_klines(symbol, interval="5m", limit=50):
         "limit": limit
     }
     data = api_request("GET", endpoint, params)
-    if data and "data" in data:
+    if data and "data" in 
         closes = [float(kline[4]) for kline in data["data"]]
         return closes
     return []
@@ -185,12 +183,11 @@ def calculate_rsi(prices, period=14):
 
 # ============= ТРЕЙЛИНГ-СТОП =============
 def update_trailing_stops():
-    """Обновляет трейлинг-стопы для всех активных позиций"""
     global trailing_stops, active_trades
 
     while True:
         try:
-            time.sleep(60)  # проверяем каждую минуту
+            time.sleep(60)
             current_prices = {}
             for symbol in list(trailing_stops.keys()):
                 price = get_current_price(symbol)
@@ -206,18 +203,13 @@ def update_trailing_stops():
                 highest_price = max(stop_data["highest_price"], current_price)
                 stop_price = highest_price * (1 - TRAILING_STOP_PCT / 100)
 
-                # Обновляем highest_price
                 trailing_stops[symbol]["highest_price"] = highest_price
 
-                # Если цена упала ниже стопа — продаем
                 if current_price <= stop_price and symbol in active_trades:
                     logger.info(f"🚨 Трейлинг-стоп сработал для {symbol}! Текущая цена: {current_price}, Стоп: {stop_price}")
-                    
-                    # Продаем всю позицию
                     quantity = active_trades[symbol]["quantity"]
                     result = place_order(symbol, "SELL", "MARKET", quantity)
                     if result:
-                        # Записываем в историю
                         trade_history.append({
                             "symbol": symbol,
                             "side": "SELL",
@@ -227,7 +219,6 @@ def update_trailing_stops():
                             "profit": (current_price - entry_price) * quantity,
                             "type": "trailing_stop"
                         })
-                        # Удаляем из активных
                         del active_trades[symbol]
                         del trailing_stops[symbol]
 
@@ -237,7 +228,6 @@ def update_trailing_stops():
 
 # ============= ОСНОВНАЯ ТОРГОВАЯ ЛОГИКА =============
 def trading_engine():
-    """Основной торговый движок"""
     global active_trades, trade_history, balance_log, last_total_balance
 
     logger.info("🚀 Торговый движок запущен!")
@@ -245,7 +235,6 @@ def trading_engine():
 
     while True:
         try:
-            # Получаем баланс
             balances = get_account_balance()
             prices_cache = {}
             for symbol in SYMBOLS:
@@ -274,20 +263,18 @@ def trading_engine():
             if peak_balance == 0:
                 peak_balance = total_balance
 
-            # Проверка на просадку
+            # Отключена остановка по просадке для теста
             if total_balance < peak_balance * (1 - MAX_DRAWDOWN_PCT / 100):
-                logger.critical(f"📉 ДОСТИГНУТА МАКСИМАЛЬНАЯ ПРОСАДКА {MAX_DRAWDOWN_PCT}%! ОСТАНАВЛИВАЕМ ТОРГОВЛЮ.")
-                break
+                logger.warning(f"⚠️ Просадка превысила {MAX_DRAWDOWN_PCT}%, но торговля продолжается (тестовый режим).")
+                # break  # Закомментировано
 
             peak_balance = max(peak_balance, total_balance)
             last_total_balance = total_balance
 
-            # Если достигли лимита активных позиций — не открываем новые
             if len(active_trades) >= MAX_ACTIVE_POSITIONS:
                 time.sleep(CHECK_INTERVAL)
                 continue
 
-            # Анализируем все пары
             signals = []
             for symbol in SYMBOLS:
                 prices = get_klines(symbol, "5m", 50)
@@ -303,7 +290,6 @@ def trading_engine():
 
                 current_price = prices[-1]
 
-                # Сигнал на покупку
                 if ma_short > ma_long * 1.01 and rsi < 60 and symbol not in active_trades:
                     score = (ma_short / ma_long) * (60 - rsi) / 60
                     signals.append({
@@ -313,10 +299,8 @@ def trading_engine():
                         "price": current_price
                     })
 
-            # Сортируем по силе сигнала
             signals.sort(key=lambda x: x["score"], reverse=True)
 
-            # Выполняем сделки
             for signal in signals:
                 if len(active_trades) >= MAX_ACTIVE_POSITIONS:
                     break
@@ -337,19 +321,16 @@ def trading_engine():
                 logger.info(f"📈 Покупаем {quantity} {symbol.split('-')[0]} по цене {current_price}")
                 result = place_order(symbol, "BUY", "MARKET", quantity)
                 if result:
-                    # Добавляем в активные сделки
                     active_trades[symbol] = {
                         "quantity": quantity,
                         "entry_price": current_price,
                         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     }
-                    # Инициализируем трейлинг-стоп
                     trailing_stops[symbol] = {
                         "entry_price": current_price,
                         "highest_price": current_price,
                         "stop_price": current_price * (1 - TRAILING_STOP_PCT / 100)
                     }
-                    # Записываем в историю
                     trade_history.append({
                         "symbol": symbol,
                         "side": "BUY",
@@ -382,7 +363,6 @@ def login():
                 </form>
                 <style>body {font-family: Arial; text-align: center; margin-top: 100px;}</style>
             ''')
-    
     return render_template_string('''
         <h2>🔐 Введите пароль для доступа</h2>
         <form method="post">
@@ -397,173 +377,3 @@ def index():
     if not session.get('authenticated'):
         return redirect(url_for('login'))
     return redirect(url_for('dashboard'))
-
-@app.route('/dashboard')
-def dashboard():
-    if not session.get('authenticated'):
-        return redirect(url_for('login'))
-    
-    # Получаем текущий баланс
-    balances = get_account_balance()
-    prices_cache = {}
-    for symbol in list(active_trades.keys()) + ["BTC-USDT", "ETH-USDT"]:
-        price = get_current_price(symbol)
-        if price:
-            prices_cache[symbol] = price
-        time.sleep(0.05)
-
-    total_balance = 0.0
-    for asset, amount in balances.items():
-        if asset == "USDT":
-            total_balance += amount["free"]
-        else:
-            pair = f"{asset}-USDT"
-            if pair in prices_cache:
-                total_balance += amount["free"] * prices_cache[pair]
-
-    # HTML-шаблон дашборда
-    html_template = '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>📊 Smart Trader Dashboard</title>
-        <meta http-equiv="refresh" content="30">
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-            .container { max-width: 1200px; margin: 0 auto; }
-            .card { background: white; padding: 20px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-            h1, h2 { color: #333; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-            th { background-color: #f2f2f2; }
-            .logout { float: right; margin: 20px; }
-            .profit { color: green; }
-            .loss { color: red; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🚀 Smart Trader Dashboard</h1>
-            <a href="/logout" class="logout">🚪 Выйти</a>
-            
-            <div class="card">
-                <h2>💰 Общий баланс: {{ total_balance|round(2) }} USDT</h2>
-                <p>Активных позиций: {{ active_trades|length }}</p>
-                <p>Всего сделок: {{ trade_history|length }}</p>
-            </div>
-
-            <div class="card">
-                <h2>📈 Активные позиции ({{ active_trades|length }})</h2>
-                {% if active_trades %}
-                <table>
-                    <tr>
-                        <th>Пара</th>
-                        <th>Кол-во</th>
-                        <th>Цена входа</th>
-                        <th>Текущая цена</th>
-                        <th>Прибыль/Убыток</th>
-                        <th>Трейлинг-стоп</th>
-                        <th>Время открытия</th>
-                    </tr>
-                    {% for symbol, trade in active_trades.items() %}
-                    <tr>
-                        <td>{{ symbol }}</td>
-                        <td>{{ trade.quantity|round(6) }}</td>
-                        <td>{{ trade.entry_price|round(4) }}</td>
-                        <td>{{ prices_cache.get(symbol, 0)|round(4) }}</td>
-                        <td class="{% if prices_cache.get(symbol, 0) > trade.entry_price %}profit{% else %}loss{% endif %}">
-                            {% if prices_cache.get(symbol, 0) > 0 %}
-                                {{ ((prices_cache.get(symbol, 0) - trade.entry_price) * trade.quantity)|round(2) }} USDT
-                                ({{ ((prices_cache.get(symbol, 0) / trade.entry_price - 1) * 100)|round(2) }}%)
-                            {% endif %}
-                        </td>
-                        <td>{{ trailing_stops.get(symbol, {}).get('stop_price', 0)|round(4) if trailing_stops.get(symbol) }}</td>
-                        <td>{{ trade.timestamp }}</td>
-                    </tr>
-                    {% endfor %}
-                </table>
-                {% else %}
-                <p>Нет активных позиций</p>
-                {% endif %}
-            </div>
-
-            <div class="card">
-                <h2>📋 История сделок (последние 20)</h2>
-                {% if trade_history %}
-                <table>
-                    <tr>
-                        <th>Время</th>
-                        <th>Пара</th>
-                        <th>Тип</th>
-                        <th>Цена</th>
-                        <th>Кол-во</th>
-                        <th>Прибыль</th>
-                    </tr>
-                    {% for trade in trade_history[-20:]|reverse %}
-                    <tr>
-                        <td>{{ trade.timestamp }}</td>
-                        <td>{{ trade.symbol }}</td>
-                        <td>{{ trade.side }} ({{ trade.type }})</td>
-                        <td>{{ trade.price|round(4) }}</td>
-                        <td>{{ trade.quantity|round(6) }}</td>
-                        <td class="{% if trade.profit and trade.profit > 0 %}profit{% elif trade.profit %}loss{% endif %}">
-                            {% if trade.profit %}{{ trade.profit|round(2) }} USDT{% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </table>
-                {% else %}
-                <p>Нет истории сделок</p>
-                {% endif %}
-            </div>
-        </div>
-    </body>
-    </html>
-    '''
-    
-    return render_template_string(
-        html_template,
-        total_balance=total_balance,
-        active_trades=active_trades,
-        trade_history=trade_history,
-        prices_cache=prices_cache,
-        trailing_stops=trailing_stops
-    )
-
-@app.route('/api/status')
-def api_status():
-    if not session.get('authenticated'):
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    return jsonify({
-        "balance": last_total_balance,
-        "active_trades": len(active_trades),
-        "total_trades": len(trade_history),
-        "trailing_stops": len(trailing_stops)
-    })
-
-@app.route('/logout')
-def logout():
-    session.pop('authenticated', None)
-    return redirect(url_for('login'))
-@app.route('/health')
-def health_check():
-    """Эндпоинт для health check Render"""
-    return jsonify({"status": "ok", "uptime": time.time()}), 200
-
-# ============= ЗАПУСК =============
-if __name__ == "__main__":
-    # Запускаем торговый движок в отдельном потоке
-    trading_thread = threading.Thread(target=trading_engine, daemon=True)
-    trading_thread.start()
-    
-    # Запускаем трейлинг-стоп в отдельном потоке
-    trailing_thread = threading.Thread(target=update_trailing_stops, daemon=True)
-    trailing_thread.start()
-    
-    # 🔥 ВАЖНО: Получаем порт от Render через переменную окружения
-    port = int(os.environ.get('PORT', 10000))
-    
-    # Запускаем веб-сервер на нужном порту
-    logger.info(f"🌐 Веб-интерфейс запущен на порту {port}")
-    app.run(host='0.0.0.0', port=port, debug=False)
