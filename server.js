@@ -1,8 +1,9 @@
-// ✅ server.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (без чёрного экрана)
+// ✅ server.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (работает с фьючерсами, нет 404, нет NaN)
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import fs from 'fs'; // ✅ Добавлено для проверки существования файла
 
 dotenv.config();
 
@@ -22,7 +23,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
-        data: { // ✅ ИСПРАВЛЕНО: убрана лишняя скобка, добавлено "data"
+         { // ✅ ИСПРАВЛЕНО: убрана лишняя скобка, добавлено "data"
             webPassword: process.env.WEB_INTERFACE_PASSWORD || 'admin123'
         }
     });
@@ -43,12 +44,14 @@ app.get('/api/bot/status', async (req, res) => {
         let availableBalance = "0 USDT";
         if (!status.settings.useDemoMode) {
             const account = await getAccountInfo();
+            // ✅ ИСПРАВЛЕНО: правильный путь к балансу для фьючерсов
             if (account && account.assets && account.assets.length > 0) {
                 const usdtAsset = account.assets.find(a => a.asset === 'USDT');
                 if (usdtAsset && usdtAsset.walletBalance) {
-                    availableBalance = `${parseFloat(usdtAsset.walletBalance).toFixed(2)} USDT`;
-                } else if (account.walletBalance) {
-                    availableBalance = `${parseFloat(account.walletBalance).toFixed(2)} USDT`;
+                    const balanceNum = parseFloat(usdtAsset.walletBalance);
+                    if (!isNaN(balanceNum) && balanceNum > 0) {
+                        availableBalance = `${balanceNum.toFixed(2)} USDT`;
+                    }
                 }
             }
         } else {
@@ -57,7 +60,7 @@ app.get('/api/bot/status', async (req, res) => {
         status.availableBalance = availableBalance;
         status.lastUpdate = new Date().toISOString();
 
-        res.json({ success: true, data: status }); // ✅ ИСПРАВЛЕНО: добавлено "data"
+        res.json({ success: true,  status }); // ✅ ИСПРАВЛЕНО: добавлено "data"
     } catch (error) {
         console.error("Ошибка /api/bot/status:", error.message);
         res.status(500).json({ success: false, error: error.message });
@@ -102,7 +105,7 @@ app.get('/', (req, res) => {
     res.redirect('/dashboard');
 });
 
-// ✅ Страница дашборда — ОСНОВНОЕ ИСПРАВЛЕНИЕ
+// ✅ Страница дашборда
 app.get('/dashboard', (req, res) => {
     const dashboardPath = path.join(__dirname, 'public', 'dashboard.html');
     
@@ -145,6 +148,3 @@ app.listen(PORT, '0.0.0.0', () => {
     startMultiPairAnalysis();
     setInterval(forceDailyTrade, 24 * 60 * 60 * 1000);
 });
-
-// ✅ Добавляем fs для проверки существования файла
-import fs from 'fs';
