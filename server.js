@@ -1,4 +1,4 @@
-// ✅ server.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (без синтаксических ошибок)
+// ✅ server.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (без NaN, без 404)
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -22,7 +22,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
-        data: {  // ✅ ИСПРАВЛЕНО: убрана лишняя скобка
+        data: { // ✅ ИСПРАВЛЕНО: убрана лишняя скобка
             webPassword: process.env.WEB_INTERFACE_PASSWORD || 'admin123'
         }
     });
@@ -44,16 +44,20 @@ app.get('/api/bot/status', async (req, res) => {
         if (!status.settings.useDemoMode) {
             const account = await getAccountInfo();
             if (account && account.balance !== undefined) {
-                availableBalance = `${parseFloat(account.balance).toFixed(2)} USDT`;
+                const balanceNum = parseFloat(account.balance);
+                if (!isNaN(balanceNum)) {
+                    availableBalance = `${balanceNum.toFixed(2)} USDT`;
+                }
             }
         } else {
-            availableBalance = `${status.demoBalances.USDT?.toFixed(2)} USDT`;
+            availableBalance = `${(status.demoBalances.USDT || 0).toFixed(2)} USDT`;
         }
         status.availableBalance = availableBalance;
         status.lastUpdate = new Date().toISOString();
 
         res.json({ success: true, data: status }); // ✅ ИСПРАВЛЕНО: добавлено "data"
     } catch (error) {
+        console.error("Ошибка /api/bot/status:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
