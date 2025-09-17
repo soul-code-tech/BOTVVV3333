@@ -107,7 +107,7 @@ def get_klines(symbol, interval="5m", limit=50):
         "limit": limit
     }
     data = api_request("GET", endpoint, params)
-    if data and "data" in 
+    if data and "data" in data
         closes = [float(kline[4]) for kline in data["data"]]
         return closes
     return []
