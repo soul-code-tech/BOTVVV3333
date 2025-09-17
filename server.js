@@ -1,4 +1,4 @@
-// ✅ server.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (без NaN, без 404)
+// ✅ server.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (работает с фьючерсами, нет 404, нет NaN)
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -22,7 +22,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
-        data: { // ✅ ИСПРАВЛЕНО: убрана лишняя скобка
+        data: { // ✅ ИСПРАВЛЕНО: убрана лишняя скобка, добавлено "data"
             webPassword: process.env.WEB_INTERFACE_PASSWORD || 'admin123'
         }
     });
@@ -43,10 +43,13 @@ app.get('/api/bot/status', async (req, res) => {
         let availableBalance = "0 USDT";
         if (!status.settings.useDemoMode) {
             const account = await getAccountInfo();
-            if (account && account.balance !== undefined) {
-                const balanceNum = parseFloat(account.balance);
-                if (!isNaN(balanceNum)) {
-                    availableBalance = `${balanceNum.toFixed(2)} USDT`;
+            // ✅ ИСПРАВЛЕНО: правильный путь к балансу для фьючерсов
+            if (account && account.assets && account.assets.length > 0) {
+                const usdtAsset = account.assets.find(a => a.asset === 'USDT');
+                if (usdtAsset && usdtAsset.walletBalance) {
+                    availableBalance = `${parseFloat(usdtAsset.walletBalance).toFixed(2)} USDT`;
+                } else if (account.walletBalance) {
+                    availableBalance = `${parseFloat(account.walletBalance).toFixed(2)} USDT`;
                 }
             }
         } else {
@@ -68,6 +71,7 @@ app.post('/api/bot/settings', (req, res) => {
         updateBotSettings(req.body);
         res.json({ success: true, message: "Настройки сохранены" });
     } catch (error) {
+        console.error("Ошибка /api/bot/settings:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -78,6 +82,7 @@ app.post('/api/bot/trade-now', async (req, res) => {
         await executeTradingLogic();
         res.json({ success: true, message: "Торговля запущена", timestamp: new Date().toISOString() });
     } catch (error) {
+        console.error("Ошибка /api/bot/trade-now:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -88,6 +93,7 @@ app.post('/api/bot/force-trade', async (req, res) => {
         await forceDailyTrade();
         res.json({ success: true, message: "Принудительная сделка запущена", timestamp: new Date().toISOString() });
     } catch (error) {
+        console.error("Ошибка /api/bot/force-trade:", error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
