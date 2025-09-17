@@ -20,7 +20,7 @@ load_dotenv()
 API_KEY = os.getenv("BINGX_API_KEY")
 SECRET_KEY = os.getenv("BINGX_SECRET_KEY")
 WEB_PASSWORD = os.getenv("WEB_PASSWORD", "admin")  # Пароль для веб-интерфейса
-BASE_URL = "https://open-api.bingx.com"
+BASE_URL = "https://open-api.bingx.io"
 
 # Расширенный список пар (50+)
 SYMBOLS = [
@@ -546,6 +546,10 @@ def api_status():
 def logout():
     session.pop('authenticated', None)
     return redirect(url_for('login'))
+@app.route('/health')
+def health_check():
+    """Эндпоинт для health check Render"""
+    return jsonify({"status": "ok", "uptime": time.time()}), 200
 
 # ============= ЗАПУСК =============
 if __name__ == "__main__":
