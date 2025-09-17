@@ -1,4 +1,4 @@
-// ✅ server.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (работает с фьючерсами, нет 404, нет NaN)
+// ✅ server.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (без чёрного экрана)
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -43,7 +43,6 @@ app.get('/api/bot/status', async (req, res) => {
         let availableBalance = "0 USDT";
         if (!status.settings.useDemoMode) {
             const account = await getAccountInfo();
-            // ✅ ИСПРАВЛЕНО: правильный путь к балансу для фьючерсов
             if (account && account.assets && account.assets.length > 0) {
                 const usdtAsset = account.assets.find(a => a.asset === 'USDT');
                 if (usdtAsset && usdtAsset.walletBalance) {
@@ -103,13 +102,28 @@ app.get('/', (req, res) => {
     res.redirect('/dashboard');
 });
 
-// ✅ Страница дашборда
+// ✅ Страница дашборда — ОСНОВНОЕ ИСПРАВЛЕНИЕ
 app.get('/dashboard', (req, res) => {
     const dashboardPath = path.join(__dirname, 'public', 'dashboard.html');
+    
+    // ✅ Проверяем, существует ли файл
+    if (!fs.existsSync(dashboardPath)) {
+        console.error('[❌] Файл dashboard.html не найден по пути:', dashboardPath);
+        res.status(500).send(`
+            <h1>Ошибка 500: Dashboard не найден</h1>
+            <p>Пожалуйста, убедитесь, что файл <code>public/dashboard.html</code> существует в вашем репозитории.</p>
+            <p>Текущий путь: ${dashboardPath}</p>
+        `);
+        return;
+    }
+
     res.sendFile(dashboardPath, (err) => {
         if (err) {
             console.error('[❌] Ошибка отправки dashboard.html:', err.message);
-            res.status(404).send('Dashboard not found. Please check if public/dashboard.html exists.');
+            res.status(500).send(`
+                <h1>Ошибка 500: Не удалось загрузить Dashboard</h1>
+                <p>${err.message}</p>
+            `);
         }
     });
 });
@@ -131,3 +145,6 @@ app.listen(PORT, '0.0.0.0', () => {
     startMultiPairAnalysis();
     setInterval(forceDailyTrade, 24 * 60 * 60 * 1000);
 });
+
+// ✅ Добавляем fs для проверки существования файла
+import fs from 'fs';
