@@ -4,7 +4,7 @@ import time
 import json
 import logging
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import defaultdict
 import requests
 import hmac
@@ -557,6 +557,9 @@ if __name__ == "__main__":
     trailing_thread = threading.Thread(target=update_trailing_stops, daemon=True)
     trailing_thread.start()
     
-    # Запускаем веб-сервер
-    logger.info("🌐 Веб-интерфейс запущен на http://localhost:5000")
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    # 🔥 ВАЖНО: Получаем порт от Render через переменную окружения
+    port = int(os.environ.get('PORT', 10000))
+    
+    # Запускаем веб-сервер на нужном порту
+    logger.info(f"🌐 Веб-интерфейс запущен на порту {port}")
+    app.run(host='0.0.0.0', port=port, debug=False)
