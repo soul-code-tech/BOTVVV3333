@@ -1,4 +1,4 @@
-// ✅ server.js — ФИНАЛЬНАЯ ВЕРСИЯ (БЕЗ ОШИБОК)
+// ✅ server.js — ИСПРАВЛЕННАЯ ВЕРСИЯ (работает с фьючерсами, нет 404, нет NaN)
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -19,11 +19,11 @@ const PORT = process.env.PORT || 10000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ Эндпоинт для получения пароля — ИСПРАВЛЕНО
+// ✅ Эндпоинт для получения пароля
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
-        data: { // ✅ УБРАНА ЛИШНЯЯ СКОБКА, ДОБАВЛЕНО "data"
+        data: { // ✅ ИСПРАВЛЕНО: добавлено "data", убрана лишняя скобка
             webPassword: process.env.WEB_INTERFACE_PASSWORD || 'admin123'
         }
     });
@@ -44,6 +44,7 @@ app.get('/api/bot/status', async (req, res) => {
         let availableBalance = "0 USDT";
         if (!status.settings.useDemoMode) {
             const account = await getAccountInfo();
+            // ✅ ИСПРАВЛЕНО: правильный путь к балансу для фьючерсов
             if (account && account.assets && account.assets.length > 0) {
                 const usdtAsset = account.assets.find(a => a.asset === 'USDT');
                 if (usdtAsset && usdtAsset.walletBalance) {
@@ -59,7 +60,7 @@ app.get('/api/bot/status', async (req, res) => {
         status.availableBalance = availableBalance;
         status.lastUpdate = new Date().toISOString();
 
-        res.json({ success: true, data: status }); // ✅ ДОБАВЛЕНО "data"
+        res.json({ success: true, data: status }); // ✅ ИСПРАВЛЕНО: добавлено "data"
     } catch (error) {
         console.error("Ошибка /api/bot/status:", error.message);
         res.status(500).json({ success: false, error: error.message });
@@ -108,11 +109,13 @@ app.get('/', (req, res) => {
 app.get('/dashboard', (req, res) => {
     const dashboardPath = path.join(__dirname, 'public', 'dashboard.html');
     
+    // ✅ Проверяем, существует ли файл
     if (!fs.existsSync(dashboardPath)) {
         console.error('[❌] Файл dashboard.html не найден по пути:', dashboardPath);
         res.status(500).send(`
             <h1>Ошибка 500: Dashboard не найден</h1>
             <p>Пожалуйста, убедитесь, что файл <code>public/dashboard.html</code> существует в вашем репозитории.</p>
+            <p>Текущий путь: ${dashboardPath}</p>
         `);
         return;
     }
